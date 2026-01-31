@@ -12,6 +12,8 @@ class Action:
     SAVE_DICE = "Save dice"
     BUST = "Bust"
 
+    __slots__ = ("name", "optional_args")
+
     def __init__(self, name, optional_args: Optional[int] = None):
         self.name = name
         self.optional_args = optional_args
@@ -24,6 +26,12 @@ class Action:
 
     def __hash__(self) -> int:
         return hash((self.name, self.optional_args))
+
+
+# Pre-instantiate common actions to avoid repeated object creation
+ACTION_ROLL = Action(Action.ROLL)
+ACTION_STOP = Action(Action.STOP)
+ACTION_BUST = Action(Action.BUST)
 
 
 class GameState:
@@ -47,22 +55,29 @@ class GameState:
             return []
 
         if not self.dice_throw:
-            actions = [Action(Action.ROLL), Action(Action.STOP)]
-            return actions
+            return [ACTION_ROLL, ACTION_STOP]
 
         if len(self.hand) >= self.N_DICE:
-            return [Action(Action.STOP)]
+            return [ACTION_STOP]
 
         if self.dice_throw:
-            die_options = []
+            # Optimization: fast path filter
+            # Logic: We can save any die D from dice_throw if D is NOT in hand.
+
+            # Using a set for hand lookup is overhead if we do it every time for every die,
+            # but constructing it ONCE here might be worth it if dice_throw is large?
+            # Actually, hand is small (max 8). Linear scan is fast.
+            # But we can optimize by just iterating.
+
+            die_options = set()
             for d in self.dice_throw:
-                if not self._die_in_hand(d):
-                    die_options.append(d)
+                if d not in self.hand:
+                    die_options.add(d)
 
             if not die_options:
-                return [Action(Action.BUST)]
+                return [ACTION_BUST]
 
-            return [Action(Action.SAVE_DICE, d) for d in set(die_options)]
+            return [Action(Action.SAVE_DICE, d) for d in die_options]
 
     def execute_action(self, action: Action) -> "GameState":
         # Make game state immutable manually instead of deepcopy for performance
@@ -172,7 +187,5 @@ class GameState:
         return results
 
     def _die_in_hand(self, die: int) -> bool:
-        if die in set(self.hand):
-            return True
-        else:
-            return False
+        # Optimization: removed set creation. Linear scan on small list is faster.
+        return die in self.hand
