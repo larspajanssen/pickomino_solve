@@ -46,12 +46,12 @@ class GameState:
             # Return no available actions when the round had been stopped
             return []
 
+        if len(self.hand) >= self.N_DICE:
+            return [Action(Action.STOP)]
+
         if not self.dice_throw:
             actions = [Action(Action.ROLL), Action(Action.STOP)]
             return actions
-
-        if len(self.hand) >= self.N_DICE:
-            return [Action(Action.STOP)]
 
         if self.dice_throw:
             die_options = []
