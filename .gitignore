@@ -11,3 +11,6 @@ wheels/
 
 # VS Code
 .vscode/
+
+# Agent folder
+.agent/

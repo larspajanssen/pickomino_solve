@@ -160,9 +160,9 @@ function validateState() {
     }
 }
 
-// Simulation Slider
-document.getElementById('simulations').addEventListener('input', function (e) {
-    document.getElementById('sim-value').textContent = e.target.value;
+// Thinking Time Slider
+document.getElementById('thinking-time').addEventListener('input', function (e) {
+    document.getElementById('time-value').textContent = e.target.value;
 });
 
 // Form Submission
@@ -170,7 +170,7 @@ document.getElementById('game-form').addEventListener('submit', async function (
     e.preventDefault();
     if (!validateState()) return;
 
-    const num_simulations = Number(document.getElementById('simulations').value);
+    const thinking_time = Number(document.getElementById('thinking-time').value);
 
     // Show Loading State
     const submitBtn = document.getElementById('submit-btn');
@@ -182,7 +182,7 @@ document.getElementById('game-form').addEventListener('submit', async function (
         const response = await fetch('/api/run_mcts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hand, dice_throw: diceThrow.length ? diceThrow : null, num_simulations })
+            body: JSON.stringify({ hand, dice_throw: diceThrow.length ? diceThrow : null, thinking_time })
         });
 
         if (!response.ok) throw new Error('API Error');

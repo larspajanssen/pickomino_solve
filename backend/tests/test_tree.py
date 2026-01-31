@@ -60,6 +60,34 @@ def test_simulation_returns_score():
     assert score >= 5
 
 
+def test_terminal_node_visits():
+    """
+    Test that MCTS visits terminal nodes and they accumulate visit counts (N).
+    """
+    # Create a state where the only action is STOP, which leads to a terminal state
+    state = DummyGameState(stopped_round=False, score=40, actions=[Action(Action.STOP)])
+
+    mcts = MCTS(state)
+    simulations = 50
+    mcts.run(num_simulations=simulations)
+
+    root = mcts.root
+
+    # We expect the root to have 1 child (STOP)
+    assert len(root.children) == 1
+    stop_action = Action(Action.STOP)
+    assert stop_action in root.children
+
+    child = root.children[stop_action]
+    assert child.is_terminal_node()
+
+    # The child should have been visited roughly the same amount as the root (minus maybe 1 for initial expansion)
+    assert child.N > 1, "Terminal child node should be visited more than once"
+    assert (
+        child.N >= simulations - 1
+    ), "Terminal child node should capture almost all visits"
+
+
 def test_backpropagation_updates_nodes():
     """
     Test that _backpropagate correctly updates visit count (N) and value (Q) for nodes.

@@ -1,7 +1,7 @@
-import copy
 import math
 import random
 from collections import Counter
+from functools import lru_cache
 from itertools import combinations_with_replacement
 from typing import List, Optional
 
@@ -11,6 +11,8 @@ class Action:
     STOP = "Stop round"
     SAVE_DICE = "Save dice"
     BUST = "Bust"
+
+    __slots__ = ("name", "optional_args")
 
     def __init__(self, name, optional_args: Optional[int] = None):
         self.name = name
@@ -26,11 +28,17 @@ class Action:
         return hash((self.name, self.optional_args))
 
 
+# Pre-instantiate common actions to avoid repeated object creation
+ACTION_ROLL = Action(Action.ROLL)
+ACTION_STOP = Action(Action.STOP)
+ACTION_BUST = Action(Action.BUST)
+
+
 class GameState:
     def __init__(
         self,
         hand: List[int],
-        dice_throw: Optional[List[int]] = [],
+        dice_throw: Optional[List[int]] = None,
         score: Optional[float] = 0.0,
     ):
         self.DIE = [1, 2, 3, 4, 5, 6]
@@ -38,7 +46,7 @@ class GameState:
         self.score = score
 
         self.hand = hand
-        self.dice_throw = dice_throw
+        self.dice_throw = dice_throw if dice_throw is not None else []
         self.stopped_round = False
 
     def get_available_actions(self) -> List[Action]:
@@ -50,57 +58,76 @@ class GameState:
             return [Action(Action.STOP)]
 
         if not self.dice_throw:
-            actions = [Action(Action.ROLL), Action(Action.STOP)]
-            return actions
+            return [ACTION_ROLL, ACTION_STOP]
+
+        if len(self.hand) >= self.N_DICE:
+            return [ACTION_STOP]
 
         if self.dice_throw:
-            die_options = []
+            # Optimization: fast path filter
+            # Logic: We can save any die D from dice_throw if D is NOT in hand.
+
+            # Using a set for hand lookup is overhead if we do it every time for every die,
+            # but constructing it ONCE here might be worth it if dice_throw is large?
+            # Actually, hand is small (max 8). Linear scan is fast.
+            # But we can optimize by just iterating.
+
+            die_options = set()
             for d in self.dice_throw:
-                if not self._die_in_hand(d):
-                    die_options.append(d)
+                if d not in self.hand:
+                    die_options.add(d)
 
             if not die_options:
-                return [Action(Action.BUST)]
+                return [ACTION_BUST]
 
-            return [Action(Action.SAVE_DICE, d) for d in set(die_options)]
+            return [Action(Action.SAVE_DICE, d) for d in die_options]
 
     def execute_action(self, action: Action) -> "GameState":
-        # Make game state immutable
-        new_state = copy.deepcopy(self)
+        # Make game state immutable manually instead of deepcopy for performance
+        new_hand = list(self.hand)
+        new_dice_throw = list(self.dice_throw) if self.dice_throw else []
+        new_score = self.score
+        new_stopped_round = self.stopped_round
 
         if action.name == Action.ROLL:
-            if new_state.dice_throw:
+            if new_dice_throw:
                 raise Exception("dice_throw should be empty")
 
             # Generate random roll
-            dice_count = new_state.N_DICE - len(new_state.hand)
+            dice_count = self.N_DICE - len(new_hand)
             # Use self.DIE to determine range, effectively random.choice(self.DIE)
-            roll = [random.choice(new_state.DIE) for _ in range(dice_count)]
+            roll = [random.choice(self.DIE) for _ in range(dice_count)]
             roll.sort()
 
-            # Apply the roll using the new deterministic method
-            new_state = new_state.apply_roll_outcome(roll)
+            # Optimization: directly return the new state
+            return GameState(
+                hand=new_hand,
+                dice_throw=roll,  # Sorted random roll
+                score=new_score,
+            )
 
         if action.name == Action.SAVE_DICE:
-            for d in new_state.dice_throw:
+            for d in new_dice_throw:
                 if action.optional_args == d:
-                    new_state.hand.append(d)
+                    new_hand.append(d)
 
             # Empty dice throw
-            new_state.dice_throw = []
+            new_dice_throw = []
 
         if action.name == Action.BUST:
-            new_state.score = 0
-            new_state.stopped_round = True
+            new_score = 0
+            new_stopped_round = True
 
         if action.name == Action.STOP:
-            for dh in new_state.hand:
+            for dh in new_hand:
                 if dh == 6:
                     # Transform worm to value of 5
                     dh = 5
-                new_state.score += dh
-            new_state.stopped_round = True
+                new_score += dh
+            new_stopped_round = True
 
+        new_state = GameState(hand=new_hand, dice_throw=new_dice_throw, score=new_score)
+        new_state.stopped_round = new_stopped_round
         return new_state
 
     def apply_roll_outcome(self, roll: List[int]) -> "GameState":
@@ -108,26 +135,41 @@ class GameState:
         Applies a specific dice roll outcome to the current state.
         This allows for deterministic transitions from a Chance Node.
         """
-        new_state = copy.deepcopy(self)
-        if new_state.dice_throw:
+        if self.dice_throw:
             raise Exception("dice_throw should be empty before applying new roll")
 
-        new_state.dice_throw = sorted(roll)
+        # Optimization: Manual copy
+        new_hand = list(self.hand)
+        # dice_throw is None or empty in self, so we just set the new one
+        new_dice_throw = sorted(roll)
+
+        new_state = GameState(
+            hand=new_hand, dice_throw=new_dice_throw, score=self.score
+        )
+        new_state.stopped_round = self.stopped_round
         return new_state
 
+    @lru_cache(maxsize=16)
     def get_possible_rolls(self) -> List[tuple[List[int], float]]:
         """
         Returns a list of all possible sorted dice rolls and their probabilities.
         Returns: List of (sorted_roll, respective probability)
         """
         num_dice = self.N_DICE - len(self.hand)
+        return self._get_possible_rolls_cached(num_dice)
+
+    @staticmethod
+    @lru_cache(maxsize=16)
+    def _get_possible_rolls_cached(num_dice: int) -> List[tuple[List[int], float]]:
         if num_dice <= 0:
             return []
 
-        num_faces = len(self.DIE)
+        # Hardcoded for now as per original class
+        DIE = [1, 2, 3, 4, 5, 6]
+        num_faces = len(DIE)
 
         # All possible sorted combinations
-        combs = list(combinations_with_replacement(self.DIE, num_dice))
+        combs = list(combinations_with_replacement(DIE, num_dice))
 
         results = []
         total_outcomes = num_faces**num_dice
@@ -148,7 +190,5 @@ class GameState:
         return results
 
     def _die_in_hand(self, die: int) -> bool:
-        if die in set(self.hand):
-            return True
-        else:
-            return False
+        # Optimization: removed set creation. Linear scan on small list is faster.
+        return die in self.hand
