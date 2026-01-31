@@ -1,5 +1,6 @@
 import math
 import random
+import time
 from collections import defaultdict
 from typing import Dict, List, TypedDict
 
@@ -172,76 +173,122 @@ class MCTS:
             current_node.Q += score
             current_node = current_node.parent
 
+    TIME_CHECK_INTERVAL = 25
+    MONITOR_POINTS_TARGET = 20
+
     def run(
-        self, num_simulations: int, monitor_interval: int = 1000
+        self,
+        num_simulations: int | None = None,
+        thinking_time: float | None = None,
     ) -> List[ResultAction]:
         """
-        Runs the MCTS algorithm for a specified number of simulations
-        and returns the best action from the root.
+        Runs the MCTS algorithm. Can be stopped by a fixed number of simulations
+        OR by a time limit (thinking_time in seconds).
         """
+        if num_simulations is None and thinking_time is None:
+            raise ValueError(
+                "Either num_simulations or thinking_time must be provided."
+            )
+
         history_log: Dict[Action, List[HistoryPoint]] = defaultdict(list)
 
-        for i in range(1, num_simulations + 1):
-            # 1. Selection
-            leaf_node = self._select()
+        # Setup monitoring intervals
+        monitor_interval_sims = None
+        monitor_interval_time = None
 
-            # 2. Expansion (only if not a terminal node and not fully expanded)
-            if not leaf_node.is_terminal_node():
-                # If the leaf node is not fully expanded, expand one child.
-                # If it is fully expanded (and not terminal), _select would have taken us deeper.
-                # So if we reach here and it's not terminal, we must expand.
-                node_to_simulate_from = self._expand(leaf_node)
+        if num_simulations is not None:
+            monitor_interval_sims = max(
+                1, num_simulations // self.MONITOR_POINTS_TARGET
+            )
 
-                # If we expanded into a ChanceNode, we need to pick one of its children to start simulation
-                if isinstance(node_to_simulate_from, ChanceNode):
-                    node_to_simulate_from = random.choices(
-                        node_to_simulate_from.children,
-                        weights=node_to_simulate_from.probabilities,
-                        k=1,
-                    )[0]
+        if thinking_time is not None:
+            monitor_interval_time = thinking_time / self.MONITOR_POINTS_TARGET
 
-            else:
-                # If it's a terminal node, we simulate from itself (score is already final)
-                node_to_simulate_from = leaf_node
+        start_time = time.time()
+        next_monitor_time = (
+            start_time + monitor_interval_time if monitor_interval_time else None
+        )
 
-            # 3. Simulation
-            score = self._simulate(node_to_simulate_from)
+        i = 0
+        while True:
+            # --- Stopping Conditions ---
+            # 1. Simulation count limit
+            if num_simulations is not None and i >= num_simulations:
+                break
 
-            # 4. Backpropagation
-            self._backpropagate(node_to_simulate_from, score)
+            # 2. Time limit (batched check for performance)
+            if thinking_time is not None and i % self.TIME_CHECK_INTERVAL == 0:
+                current_time = time.time()
+                if current_time - start_time >= thinking_time:
+                    break
 
-            # Track history periodically
-            if i % monitor_interval == 0:
-                for action, child in self.root.children.items():
-                    if child.N > 0:
-                        avg_score = child.Q / child.N
-                        history_log[action].append(
-                            {"simulations": i, "expected_score": avg_score}
-                        )
+                # Check monitor time (batched)
+                if next_monitor_time is not None and current_time >= next_monitor_time:
+                    self._log_history(i, history_log)
+                    next_monitor_time += monitor_interval_time
 
-        # After all simulations, choose the action from the root with the highest average score (Q/N)
-        # This is a common strategy, sometimes referred to as 'greedy' choice at the end.
+            i += 1
+
+            # --- MCTS Step ---
+            self._step()
+
+            # --- Monitoring (Simulations) ---
+            if monitor_interval_sims is not None and i % monitor_interval_sims == 0:
+                self._log_history(i, history_log)
+
+        # Return results...
+        return self._get_results(history_log)
+
+    def _step(self):
+        """Performs one iteration of MCTS: Select, Expand, Simulate, Backpropagate."""
+        # 1. Selection
+        leaf_node = self._select()
+
+        # 2. Expansion
+        if not leaf_node.is_terminal_node():
+            node_to_simulate_from = self._expand(leaf_node)
+            if isinstance(node_to_simulate_from, ChanceNode):
+                node_to_simulate_from = random.choices(
+                    node_to_simulate_from.children,
+                    weights=node_to_simulate_from.probabilities,
+                    k=1,
+                )[0]
+        else:
+            node_to_simulate_from = leaf_node
+
+        # 3. Simulation
+        score = self._simulate(node_to_simulate_from)
+
+        # 4. Backpropagation
+        self._backpropagate(node_to_simulate_from, score)
+
+    def _log_history(
+        self, iteration: int, history_log: Dict[Action, List[HistoryPoint]]
+    ):
+        """Logs the current expected scores for all root children."""
+        for action, child in self.root.children.items():
+            if child.N > 0:
+                avg_score = child.Q / child.N
+                history_log[action].append(
+                    {"simulations": iteration, "expected_score": avg_score}
+                )
+
+    def _get_results(
+        self, history_log: Dict[Action, List[HistoryPoint]]
+    ) -> List[ResultAction]:
+        """Compiles the final results from the root node."""
         if not self.root.children:
-            # If no simulations or no actions from root were expanded, return None or handle as error
             raise Exception("root does not have children")
 
         results = []
-        if self.root.children:
-            for action, child in self.root.children.items():
-                if child.N > 0:  # Only consider actions that have been visited
-                    avg_score = child.Q / child.N
-                else:
-                    avg_score = 0  # If not visited, consider its score as 0
-
-                # Retrieve history for this action
-                action_history = history_log.get(action, [])
-
-                results.append(
-                    ResultAction(
-                        expected_score=avg_score,
-                        action=action,
-                        visit_count=child.N,
-                        history=action_history,
-                    )
+        for action, child in self.root.children.items():
+            avg_score = child.Q / child.N if child.N > 0 else 0
+            results.append(
+                ResultAction(
+                    expected_score=avg_score,
+                    action=action,
+                    visit_count=child.N,
+                    history=history_log.get(action, []),
                 )
+            )
         return results
