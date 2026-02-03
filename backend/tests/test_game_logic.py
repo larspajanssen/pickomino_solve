@@ -1,6 +1,6 @@
 import math
 
-from src.game import Action, GameState
+from pickomino_solver.game import Action, GameState
 
 
 class TestGameStateLogic:

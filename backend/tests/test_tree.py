@@ -1,4 +1,4 @@
-from src import MCTS, Action, GameState, Node
+from pickomino_solver import MCTS, Action, GameState, Node
 
 
 class DummyAction(Action):

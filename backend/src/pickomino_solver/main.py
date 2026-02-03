@@ -5,7 +5,8 @@ from typing import Self
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator
-from src import MCTS, GameState
+
+from . import MCTS, GameState
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

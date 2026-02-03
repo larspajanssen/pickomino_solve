@@ -25,4 +25,4 @@ RUN uv sync --frozen
 EXPOSE 6000
 
 # Start FastAPI app using 'uv run' to ensure we use the virtual environment
-CMD ["uv", "run", "uvicorn", "main:app", "--workers", "1", "--host", "0.0.0.0", "--port", "6000"]
+CMD ["uv", "run", "uvicorn", "pickomino_solver.main:app", "--workers", "1", "--host", "0.0.0.0", "--port", "6000"]
