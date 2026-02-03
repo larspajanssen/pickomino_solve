@@ -38,7 +38,7 @@ class MCTSRequest(BaseModel):
 
 
 @app.post("/api/run_mcts")
-async def run_mcts(req: MCTSRequest):
+def run_mcts(req: MCTSRequest):
     game_state = GameState(hand=req.hand, dice_throw=req.dice_throw)
     mcts = MCTS(game_state, c_param=200 * math.sqrt(2))  # Adjust c_param as needed
 
