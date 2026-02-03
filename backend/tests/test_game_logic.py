@@ -1,6 +1,6 @@
 import math
 
-from src.game import Action, GameState
+from pickomino_solver.game import Action, GameState
 
 
 class TestGameStateLogic:
@@ -126,3 +126,23 @@ class TestGameStateLogic:
         assert new_state.dice_throw == [1, 2, 3]  # Should be sorted
         assert new_state.dice_throw is not roll  # Should be copy/new list
         assert game.dice_throw == []  # Original untouched (default is empty list)
+
+    def test_stop_round_without_worm_is_zero(self):
+        """Test that stopping without a worm (6) results in a score of 0."""
+        # Hand: 5, 5. sum would be 10, but no worm.
+        game = GameState(hand=[5, 5], dice_throw=[])
+
+        new_state = game.execute_action(Action(Action.STOP))
+
+        assert new_state.stopped_round is True
+        assert new_state.score == 0
+
+    def test_dice_are_sorted(self):
+        """Test that dice throws are always sorted to handle permutations."""
+        g = GameState(hand=[])
+        # Roll multiple times to ensure we don't get lucky with a random sorted roll
+        for _ in range(10):
+            rolled_state = g.execute_action(Action(Action.ROLL))
+            assert rolled_state.dice_throw == sorted(
+                rolled_state.dice_throw
+            ), f"Dice throw {rolled_state.dice_throw} is not sorted"

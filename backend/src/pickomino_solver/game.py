@@ -3,7 +3,7 @@ import random
 from collections import Counter
 from functools import lru_cache
 from itertools import combinations_with_replacement
-from typing import List, Optional
+from typing import Optional
 
 
 class Action:
@@ -37,8 +37,8 @@ ACTION_BUST = Action(Action.BUST)
 class GameState:
     def __init__(
         self,
-        hand: List[int],
-        dice_throw: Optional[List[int]] = None,
+        hand: list[int],
+        dice_throw: Optional[list[int]] = None,
         score: Optional[float] = 0.0,
     ):
         self.DIE = [1, 2, 3, 4, 5, 6]
@@ -49,7 +49,7 @@ class GameState:
         self.dice_throw = dice_throw if dice_throw is not None else []
         self.stopped_round = False
 
-    def get_available_actions(self) -> List[Action]:
+    def get_available_actions(self) -> list[Action]:
         if self.stopped_round:
             # Return no available actions when the round had been stopped
             return []
@@ -119,18 +119,21 @@ class GameState:
             new_stopped_round = True
 
         if action.name == Action.STOP:
-            for dh in new_hand:
-                if dh == 6:
-                    # Transform worm to value of 5
-                    dh = 5
-                new_score += dh
+            if 6 in new_hand:
+                for dh in new_hand:
+                    if dh == 6:
+                        # Transform worm to value of 5
+                        dh = 5
+                    new_score += dh
+            else:
+                new_score = 0
             new_stopped_round = True
 
         new_state = GameState(hand=new_hand, dice_throw=new_dice_throw, score=new_score)
         new_state.stopped_round = new_stopped_round
         return new_state
 
-    def apply_roll_outcome(self, roll: List[int]) -> "GameState":
+    def apply_roll_outcome(self, roll: list[int]) -> "GameState":
         """
         Applies a specific dice roll outcome to the current state.
         This allows for deterministic transitions from a Chance Node.
@@ -150,7 +153,7 @@ class GameState:
         return new_state
 
     @lru_cache(maxsize=16)
-    def get_possible_rolls(self) -> List[tuple[List[int], float]]:
+    def get_possible_rolls(self) -> list[tuple[list[int], float]]:
         """
         Returns a list of all possible sorted dice rolls and their probabilities.
         Returns: List of (sorted_roll, respective probability)
@@ -160,7 +163,7 @@ class GameState:
 
     @staticmethod
     @lru_cache(maxsize=16)
-    def _get_possible_rolls_cached(num_dice: int) -> List[tuple[List[int], float]]:
+    def _get_possible_rolls_cached(num_dice: int) -> list[tuple[list[int], float]]:
         if num_dice <= 0:
             return []
 

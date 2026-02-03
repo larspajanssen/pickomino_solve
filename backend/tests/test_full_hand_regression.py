@@ -1,5 +1,5 @@
-from src.game import Action, GameState
-from src.tree import MCTS
+from pickomino_solver.game import Action, GameState
+from pickomino_solver.tree import MCTS
 
 
 def test_mcts_full_hand_no_index_error():

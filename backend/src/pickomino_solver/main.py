@@ -5,7 +5,8 @@ from typing import Self
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator
-from src import MCTS, GameState
+
+from . import MCTS, GameState
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -38,7 +39,7 @@ class MCTSRequest(BaseModel):
 
 
 @app.post("/api/run_mcts")
-async def run_mcts(req: MCTSRequest):
+def run_mcts(req: MCTSRequest):
     game_state = GameState(hand=req.hand, dice_throw=req.dice_throw)
     mcts = MCTS(game_state, c_param=200 * math.sqrt(2))  # Adjust c_param as needed
 

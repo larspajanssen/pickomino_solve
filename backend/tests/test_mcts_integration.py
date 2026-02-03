@@ -1,5 +1,5 @@
-from src.game import GameState
-from src.tree import MCTS, Action
+from pickomino_solver.game import GameState
+from pickomino_solver.tree import MCTS, Action
 
 
 def test_chance_node_implementation():

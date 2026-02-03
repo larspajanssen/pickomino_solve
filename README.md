@@ -62,6 +62,11 @@ Currently, the game accepts any gathered sum as a valid score. In the physical g
     - Highlight valid target tiles in the UI to guide the player (or AI).
 - **Configuration**: Add a new configuration panel to allow users to toggle which tiles are "available" (e.g., to simulate a mid-game state where tiles 21, 24, and 30 have already been taken).
 
+#### Performance: The "Big Engine Upgrade"
+To significantly increase the number of simulations (and thus AI strength) without simpler heuristics, we plan to compile the Python logic.
+- **Goal**: Performance boost.
+- **Mechanism**: Use `mypyc` or `Cython` to compile `tree.py` and `game.py` into native C extensions, bypassing the Python interpreter loop for the MCTS "hot path".
+
 
 
 ## Hosting on Ubuntu Server
