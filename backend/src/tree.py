@@ -2,7 +2,7 @@ import math
 import random
 import time
 from collections import defaultdict
-from typing import Dict, List, TypedDict
+from typing import TypedDict
 
 from .game import Action, GameState
 
@@ -16,7 +16,7 @@ class ResultAction(TypedDict):
     expected_score: float
     action: Action
     visit_count: int
-    history: List[HistoryPoint]
+    history: list[HistoryPoint]
 
 
 class Node:
@@ -180,7 +180,7 @@ class MCTS:
         self,
         num_simulations: int | None = None,
         thinking_time: float | None = None,
-    ) -> List[ResultAction]:
+    ) -> list[ResultAction]:
         """
         Runs the MCTS algorithm. Can be stopped by a fixed number of simulations
         OR by a time limit (thinking_time in seconds).
@@ -190,7 +190,7 @@ class MCTS:
                 "Either num_simulations or thinking_time must be provided."
             )
 
-        history_log: Dict[Action, List[HistoryPoint]] = defaultdict(list)
+        history_log: dict[Action, list[HistoryPoint]] = defaultdict(list)
 
         # Setup monitoring intervals
         monitor_interval_sims = None
@@ -263,7 +263,7 @@ class MCTS:
         self._backpropagate(node_to_simulate_from, score)
 
     def _log_history(
-        self, iteration: int, history_log: Dict[Action, List[HistoryPoint]]
+        self, iteration: int, history_log: dict[Action, list[HistoryPoint]]
     ):
         """Logs the current expected scores for all root children."""
         for action, child in self.root.children.items():
@@ -274,8 +274,8 @@ class MCTS:
                 )
 
     def _get_results(
-        self, history_log: Dict[Action, List[HistoryPoint]]
-    ) -> List[ResultAction]:
+        self, history_log: dict[Action, list[HistoryPoint]]
+    ) -> list[ResultAction]:
         """Compiles the final results from the root node."""
         if not self.root.children:
             raise Exception("root does not have children")
