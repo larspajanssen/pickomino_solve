@@ -119,11 +119,14 @@ class GameState:
             new_stopped_round = True
 
         if action.name == Action.STOP:
-            for dh in new_hand:
-                if dh == 6:
-                    # Transform worm to value of 5
-                    dh = 5
-                new_score += dh
+            if 6 in new_hand:
+                for dh in new_hand:
+                    if dh == 6:
+                        # Transform worm to value of 5
+                        dh = 5
+                    new_score += dh
+            else:
+                new_score = 0
             new_stopped_round = True
 
         new_state = GameState(hand=new_hand, dice_throw=new_dice_throw, score=new_score)
