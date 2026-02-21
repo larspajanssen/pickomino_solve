@@ -9,7 +9,8 @@
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
-    }
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
   "initializeCommand": {
     "ensure ssh exists": "mkdir -p ~/.ssh",
@@ -39,7 +40,9 @@
     "UV_PYTHON": "3.13",
     "UV_VENV_CLEAR": "true",
     "UV_PROJECT": "${containerWorkspaceFolder}/backend",
-    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/backend/.venv"
+    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/backend/.venv",
+    // Docker
+    "DOCKER_CONFIG": "/home/vscode/.docker-container"
   },
   "mounts": [
     {
@@ -98,8 +101,7 @@
         "charliermarsh.ruff",
         "tamasfe.even-better-toml",
         "yzhang.markdown-all-in-one",
-        "streetsidesoftware.code-spell-checker",
-        "anthropic.claude-code"
+        "streetsidesoftware.code-spell-checker"
       ]
     }
   },
