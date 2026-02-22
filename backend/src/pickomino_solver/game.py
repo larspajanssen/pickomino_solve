@@ -39,7 +39,7 @@ class GameState:
         self,
         hand: list[int],
         dice_throw: Optional[list[int]] = None,
-        score: Optional[float] = 0.0,
+        score: float = 0.0,
     ):
         self.DIE = [1, 2, 3, 4, 5, 6]
         self.N_DICE = 8
@@ -81,6 +81,8 @@ class GameState:
                 return [ACTION_BUST]
 
             return [Action(Action.SAVE_DICE, d) for d in die_options]
+
+        return []
 
     def execute_action(self, action: Action) -> "GameState":
         # Make game state immutable manually instead of deepcopy for performance

@@ -1,7 +1,7 @@
 import math
 import random
 import time
-from typing import Callable, TypedDict
+from typing import Any, Callable, Optional, TypedDict
 
 from .game import Action, GameState
 
@@ -16,14 +16,17 @@ class ResultAction(TypedDict):
 
 class Node:
     def __init__(
-        self, state: GameState, parent: "Node" = None, action_taken: Action = None
+        self,
+        state: GameState,
+        parent: Optional["Node"] = None,
+        action_taken: Optional[Action] = None,
     ):
         self.state = state
         self.parent = parent
         self.action_taken = action_taken
         self.children = {}  # type: dict[Action, Node]
-        self.N = 0  # Visit count
-        self.Q = 0.0  # Total score
+        self.N: int = 0  # Visit count
+        self.Q: float = 0.0  # Total score
 
         # A copy of available actions to track which ones have been expanded
         self.unvisited_actions = list(state.get_available_actions())
@@ -40,15 +43,11 @@ class Node:
         return f"Node(Q={self.Q:.2f}, N={self.N}, Actions Left={len(self.unvisited_actions)})"
 
 
-class ChanceNode:
+class ChanceNode(Node):
     def __init__(self, state: GameState, parent: Node, action_taken: Action):
-        self.state = state
-        self.parent = parent
-        self.action_taken = action_taken
-        self.children = []  # List of child Nodes (outcomes)
-        self.probabilities = []  # Corresponding probabilities
-        self.N = 0
-        self.Q = 0.0
+        super().__init__(state, parent, action_taken)
+        self.children_list: list[Node] = []  # List of child Nodes (outcomes)
+        self.probabilities: list[float] = []  # Corresponding probabilities
 
     def is_terminal_node(self) -> bool:
         return False
@@ -76,7 +75,7 @@ class MCTS:
             if isinstance(current_node, ChanceNode):
                 # Sample a child based on probabilities
                 current_node = random.choices(
-                    current_node.children, weights=current_node.probabilities, k=1
+                    current_node.children_list, weights=current_node.probabilities, k=1
                 )[0]
                 continue
 
@@ -130,7 +129,7 @@ class MCTS:
                     child_state, parent=chance_node, action_taken=None
                 )  # action_taken is implicitly the roll outcome
 
-                chance_node.children.append(child_node)
+                chance_node.children_list.append(child_node)
                 chance_node.probabilities.append(prob)
 
             return chance_node
@@ -176,7 +175,7 @@ class MCTS:
         num_simulations: int | None = None,
         thinking_time: float | None = None,
         callback: Callable | None = None,
-        cancellation_token: any = None,
+        cancellation_token: Any = None,
     ) -> list[ResultAction]:
         """
         Runs the MCTS algorithm. Can be stopped by a fixed number of simulations
@@ -226,9 +225,10 @@ class MCTS:
                         next_monitor_time is not None
                         and current_time >= next_monitor_time
                     ):
-                        if callback:
+                        if callback and monitor_interval_time is not None:
                             callback(self._get_results())
-                        next_monitor_time += monitor_interval_time
+                        if monitor_interval_time is not None:
+                            next_monitor_time += monitor_interval_time
 
             i += 1
 
@@ -253,7 +253,7 @@ class MCTS:
             node_to_simulate_from = self._expand(leaf_node)
             if isinstance(node_to_simulate_from, ChanceNode):
                 node_to_simulate_from = random.choices(
-                    node_to_simulate_from.children,
+                    node_to_simulate_from.children_list,
                     weights=node_to_simulate_from.probabilities,
                     k=1,
                 )[0]

@@ -1,5 +1,7 @@
+from typing import cast
+
 from pickomino_solver.game import GameState
-from pickomino_solver.tree import MCTS, Action
+from pickomino_solver.tree import MCTS, Action, ChanceNode
 
 
 def test_chance_node_implementation():
@@ -18,15 +20,15 @@ def test_chance_node_implementation():
     roll_action = Action(Action.ROLL)
 
     assert roll_action in root.children, "ROLL should have been expanded"
-    chance_node = root.children[roll_action]
+    chance_node = cast(ChanceNode, root.children[roll_action])
 
     # Verify it is a ChanceNode (duck typing or class check if importable, but we can check attributes)
     # The ChanceNode should have 'probabilities' attribute
     assert hasattr(chance_node, "probabilities"), "Child of ROLL should be a ChanceNode"
-    assert hasattr(chance_node, "children"), "ChanceNode should have children"
+    assert hasattr(chance_node, "children_list"), "ChanceNode should have children_list"
 
     # With 8 dice, there are many possible sorted outcomes
-    num_children = len(chance_node.children)
+    num_children = len(chance_node.children_list)
     print(f"Number of expanded outcomes for 8 dice: {num_children}")
 
     assert num_children > 1, (
@@ -37,7 +39,7 @@ def test_chance_node_implementation():
     )
 
     # Verify children have different dice throws
-    dice_throws = [child.state.dice_throw for child in chance_node.children]
+    dice_throws = [child.state.dice_throw for child in chance_node.children_list]
     unique_throws = set(tuple(d) for d in dice_throws)
 
     assert len(unique_throws) == num_children, (

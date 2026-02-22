@@ -26,7 +26,7 @@ app.add_middleware(
 
 
 class MCTSRequest(BaseModel):
-    hand: list[int] | None = []
+    hand: list[int] = []
     dice_throw: list[int] | None = None
     num_simulations: int | None = None
     thinking_time: float | None = None
