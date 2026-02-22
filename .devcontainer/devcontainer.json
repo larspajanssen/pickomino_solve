@@ -1,0 +1,106 @@
+{
+  "name": "pickonmino_solve",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers-extra/features/starship:1": {},
+    "ghcr.io/va-h/devcontainers-features/uv:1": {
+      "shellautocompletion": true
+    },
+    "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "initializeCommand": {
+    "ensure ssh exists": "mkdir -p ~/.ssh",
+    "create host uv cache dir": "mkdir -p ~/.cache/uv",
+    "create permanent fish history": "mkdir -p ~/.devcontainer/${devcontainerId} && touch ~/.devcontainer/${devcontainerId}/fish_history"
+  },
+  "onCreateCommand": {
+    "prepare config dirs": "mkdir -p ~/.config/fish ~/.config/uv",
+    "create venv": "uv venv --clear",
+    "uv tox": "uv tool install tox --with tox-uv",
+    "uv prek": "uv tool install prek",
+    "uv just": "uv tool install rust-just"
+  },
+  "updateContentCommand": {
+    "sync dependencies": "uv sync --all-groups",
+    "prek install": "prek install",
+    "prek install-hooks": "prek install-hooks"
+  },
+  "postCreateCommand": {
+    "setup user workspace": "bash .devcontainer/config-files.sh",
+    "clean up tox": "rm -rf ${containerWorkspaceFolder}/.tox"
+  },
+  "containerEnv": {
+    // UV
+    "UV_INDEX": "${localEnv:UV_INDEX}",
+    "UV_CACHE_DIR": "/home/vscode/.uv_cache",
+    "UV_LINK_MODE": "symlink",
+    "UV_PYTHON": "3.13",
+    "UV_VENV_CLEAR": "true",
+    "UV_PROJECT": "${containerWorkspaceFolder}/backend",
+    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/backend/.venv",
+    "PATH": "${containerWorkspaceFolder}/backend/.venv/bin:${localEnv:PATH}",
+    // Docker
+    "DOCKER_CONFIG": "/home/vscode/.docker-container"
+  },
+  "mounts": [
+    {
+      "source": "${localEnv:HOME}/.cache/uv",
+      "target": "/home/vscode/.uv_cache",
+      "type": "bind"
+    },
+    {
+      "source": "${localEnv:HOME}/.ssh",
+      "target": "/home/vscode/.ssh",
+      "type": "bind"
+    },
+    {
+      "source": "${localEnv:HOME}/.devcontainer/${devcontainerId}/fish_history",
+      "target": "/home/vscode/.local/share/fish/fish_history",
+      "type": "bind"
+    }
+  ],
+  // Use 'postCreateCommand' to run commands after the container is created.
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "fish",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+        "python.linting.enabled": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestPath": "${workspaceFolder}/backend/.venv/bin/pytest",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        },
+        "cSpell.customDictionaries": {
+          "custom-dictionary-workspace": {
+            "name": "custom-dictionary-workspace",
+            "path": "${workspaceFolder}/.devcontainer/spell-check-dictionary-workspace.txt",
+            "addWords": true,
+            "scope": "workspace"
+          }
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "njpwerner.autodocstring",
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml",
+        "yzhang.markdown-all-in-one",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}

@@ -6,6 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+# Node
+node_modules/
+
 # Virtual environments
 .venv
 
@@ -14,3 +17,6 @@ wheels/
 
 # Agent folder
 .agent/
+
+# Skills lock
+skills-lock.json

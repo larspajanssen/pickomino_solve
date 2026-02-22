@@ -83,9 +83,9 @@ def test_terminal_node_visits():
 
     # The child should have been visited roughly the same amount as the root (minus maybe 1 for initial expansion)
     assert child.N > 1, "Terminal child node should be visited more than once"
-    assert (
-        child.N >= simulations - 1
-    ), "Terminal child node should capture almost all visits"
+    assert child.N >= simulations - 1, (
+        "Terminal child node should capture almost all visits"
+    )
 
 
 def test_backpropagation_updates_nodes():
