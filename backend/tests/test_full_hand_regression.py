@@ -14,9 +14,9 @@ def test_mcts_full_hand_no_index_error():
 
     # 1. Verify GameState logic directly
     actions = state.get_available_actions()
-    assert (
-        Action(Action.ROLL) not in actions
-    ), "ROLL should not be available when hand is full"
+    assert Action(Action.ROLL) not in actions, (
+        "ROLL should not be available when hand is full"
+    )
     assert Action(Action.STOP) in actions, "STOP should be available when hand is full"
 
     # 2. Verify MCTS can run without crash

@@ -29,20 +29,20 @@ def test_chance_node_implementation():
     num_children = len(chance_node.children)
     print(f"Number of expanded outcomes for 8 dice: {num_children}")
 
-    assert (
-        num_children > 1
-    ), "ChanceNode should have multiple children representing different rolls"
-    assert (
-        len(chance_node.probabilities) == num_children
-    ), "Probabilities should match children count"
+    assert num_children > 1, (
+        "ChanceNode should have multiple children representing different rolls"
+    )
+    assert len(chance_node.probabilities) == num_children, (
+        "Probabilities should match children count"
+    )
 
     # Verify children have different dice throws
     dice_throws = [child.state.dice_throw for child in chance_node.children]
     unique_throws = set(tuple(d) for d in dice_throws)
 
-    assert (
-        len(unique_throws) == num_children
-    ), "All children should have unique sorted dice throws"
+    assert len(unique_throws) == num_children, (
+        "All children should have unique sorted dice throws"
+    )
     assert sum(chance_node.probabilities) > 0.99, "Probabilities should sum to approx 1"
     assert sum(chance_node.probabilities) < 1.01, "Probabilities should sum to approx 1"
 
@@ -68,14 +68,10 @@ def test_mcts_time_limit():
     # It shouldn't take TOO much longer (e.g. 0.2s overhead)
     assert duration < thinking_time + 0.2
 
+    # Check results are returned
     assert len(results) > 0
-
-    # Check dynamic monitoring
-    # We expect roughly 20 history points for the most visited action
     most_visited = max(results, key=lambda x: x["visit_count"])
-    history_len = len(most_visited["history"])
-    print(f"Time-based run history length: {history_len}")
-    assert 10 <= history_len <= 30, f"Expected ~20 history points, got {history_len}"
+    assert most_visited["visit_count"] > 0
 
 
 def test_mcts_monitor_interval_simulations():
@@ -86,13 +82,9 @@ def test_mcts_monitor_interval_simulations():
     sims = 2000
     results = mcts.run(num_simulations=sims)
 
-    # Check dynamic monitoring
+    # Check results are returned
     most_visited = max(results, key=lambda x: x["visit_count"])
-    history_len = len(most_visited["history"])
-    print(f"Simulation-based run history length: {history_len}")
-
-    # Ideally should be exactly 20, but give some leeway if it misses the last one or something
-    assert 18 <= history_len <= 22, f"Expected ~20 history points, got {history_len}"
+    assert most_visited["visit_count"] > 0
 
 
 def test_mcts_invalid_input():
@@ -104,3 +96,22 @@ def test_mcts_invalid_input():
 
     with pytest.raises(ValueError, match="Either num_simulations or thinking_time"):
         mcts.run()
+
+
+def test_mcts_callback_invocation():
+    """Test that the callback is invoked during the MCTS run."""
+    state = GameState(hand=[])
+    mcts = MCTS(state)
+
+    callback_calls = []
+
+    def callback(results):
+        callback_calls.append(results)
+
+    # Using a small number of simulations but enough to trigger at least one monitor point
+    mcts.run(num_simulations=100, callback=callback)
+
+    assert len(callback_calls) > 0, "Callback should have been called at least once"
+    assert "expected_score" in callback_calls[0][0]
+    assert "action" in callback_calls[0][0]
+    assert "visit_count" in callback_calls[0][0]

@@ -1,2 +1,8 @@
 # Spell check dictionary Words
 devcontainers
+prek
+mcts
+pickomino
+backpropagation
+backpropagate
+multinomial

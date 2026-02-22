@@ -1,22 +1,17 @@
 import math
 import random
 import time
-from collections import defaultdict
-from typing import TypedDict
+from typing import Callable, TypedDict
 
 from .game import Action, GameState
 
-
-class HistoryPoint(TypedDict):
-    simulations: int
-    expected_score: float
+# HistoryPoint removed for memory optimization.
 
 
 class ResultAction(TypedDict):
     expected_score: float
     action: Action
     visit_count: int
-    history: list[HistoryPoint]
 
 
 class Node:
@@ -180,6 +175,8 @@ class MCTS:
         self,
         num_simulations: int | None = None,
         thinking_time: float | None = None,
+        callback: Callable | None = None,
+        cancellation_token: any = None,
     ) -> list[ResultAction]:
         """
         Runs the MCTS algorithm. Can be stopped by a fixed number of simulations
@@ -189,8 +186,6 @@ class MCTS:
             raise ValueError(
                 "Either num_simulations or thinking_time must be provided."
             )
-
-        history_log: dict[Action, list[HistoryPoint]] = defaultdict(list)
 
         # Setup monitoring intervals
         monitor_interval_sims = None
@@ -216,16 +211,24 @@ class MCTS:
             if num_simulations is not None and i >= num_simulations:
                 break
 
-            # 2. Time limit (batched check for performance)
-            if thinking_time is not None and i % self.TIME_CHECK_INTERVAL == 0:
-                current_time = time.time()
-                if current_time - start_time >= thinking_time:
+            # 2. Time limit and Cancellation (batched check for performance)
+            if i % self.TIME_CHECK_INTERVAL == 0:
+                if cancellation_token and cancellation_token.is_set():
                     break
 
-                # Check monitor time (batched)
-                if next_monitor_time is not None and current_time >= next_monitor_time:
-                    self._log_history(i, history_log)
-                    next_monitor_time += monitor_interval_time
+                if thinking_time is not None:
+                    current_time = time.time()
+                    if current_time - start_time >= thinking_time:
+                        break
+
+                    # Check monitor time (batched)
+                    if (
+                        next_monitor_time is not None
+                        and current_time >= next_monitor_time
+                    ):
+                        if callback:
+                            callback(self._get_results())
+                        next_monitor_time += monitor_interval_time
 
             i += 1
 
@@ -234,10 +237,11 @@ class MCTS:
 
             # --- Monitoring (Simulations) ---
             if monitor_interval_sims is not None and i % monitor_interval_sims == 0:
-                self._log_history(i, history_log)
+                if callback:
+                    callback(self._get_results())
 
-        # Return results...
-        return self._get_results(history_log)
+        # Return final results
+        return self._get_results()
 
     def _step(self):
         """Performs one iteration of MCTS: Select, Expand, Simulate, Backpropagate."""
@@ -262,20 +266,7 @@ class MCTS:
         # 4. Backpropagation
         self._backpropagate(node_to_simulate_from, score)
 
-    def _log_history(
-        self, iteration: int, history_log: dict[Action, list[HistoryPoint]]
-    ):
-        """Logs the current expected scores for all root children."""
-        for action, child in self.root.children.items():
-            if child.N > 0:
-                avg_score = child.Q / child.N
-                history_log[action].append(
-                    {"simulations": iteration, "expected_score": avg_score}
-                )
-
-    def _get_results(
-        self, history_log: dict[Action, list[HistoryPoint]]
-    ) -> list[ResultAction]:
+    def _get_results(self) -> list[ResultAction]:
         """Compiles the final results from the root node."""
         if not self.root.children:
             raise Exception("root does not have children")
@@ -284,11 +275,10 @@ class MCTS:
         for action, child in self.root.children.items():
             avg_score = child.Q / child.N if child.N > 0 else 0
             results.append(
-                ResultAction(
-                    expected_score=avg_score,
-                    action=action,
-                    visit_count=child.N,
-                    history=history_log.get(action, []),
-                )
+                {
+                    "expected_score": avg_score,
+                    "action": action,
+                    "visit_count": child.N,
+                }
             )
         return results
