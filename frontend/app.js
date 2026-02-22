@@ -239,7 +239,7 @@ function renderResults(actions) {
   // Sort actions by expected_score descending
   actions.sort((a, b) => b.expected_score - a.expected_score);
 
-  actions.forEach((action, index) => {
+  actions.forEach((action) => {
     // Table row
     const tr = document.createElement("tr");
     const score =
@@ -251,28 +251,32 @@ function renderResults(actions) {
   });
 
   // Prepare datasets for chart from local history
-  const datasets = [];
   const actionNames = actions.map((a) => a.action);
 
-  actionNames.forEach((name, index) => {
-    const data = simulationHistory
-      .map((h) => {
-        const actionData = h.actions.find((a) => a.action === name);
-        return { x: h.time, y: actionData ? actionData.expected_score : null };
-      })
-      .filter((d) => d.y !== null);
+  const datasets = actionNames
+    .map((name, index) => {
+      const data = simulationHistory
+        .map((h) => {
+          const actionData = h.actions.find((a) => a.action === name);
+          return {
+            x: h.time,
+            y: actionData ? actionData.expected_score : null,
+          };
+        })
+        .filter((d) => d.y !== null);
 
-    if (data.length > 0) {
-      datasets.push({
+      if (data.length === 0) return null;
+
+      return {
         label: name,
         data: data,
         borderColor: COLORS[index % COLORS.length],
         fill: false,
         tension: 0.1,
         pointRadius: 0, // Performance optimization for live updates
-      });
-    }
-  });
+      };
+    })
+    .filter((ds) => ds !== null);
 
   renderChart(datasets);
 }
@@ -285,7 +289,9 @@ function renderChart(datasets) {
   Chart.defaults.borderColor = "rgba(255, 255, 255, 0.1)";
 
   if (chartInstance) {
-    chartInstance.destroy();
+    chartInstance.data.datasets = datasets;
+    chartInstance.update("none"); // Update without animation for smoothness
+    return;
   }
 
   chartInstance = new Chart(ctx, {
