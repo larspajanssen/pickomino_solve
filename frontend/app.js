@@ -5,7 +5,7 @@ let currentFocus = "hand"; // 'hand' or 'throw'
 let chartInstance = null;
 let simulationHistory = []; // Local history tracking
 let simulationStartTime = 0;
-const api = new SimulationAPI();
+let api;
 const COLORS = [
   "#FF6384",
   "#36A2EB",
@@ -18,6 +18,7 @@ const placeholders = {};
 
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
+  api = new SimulationAPI();
   // Cache placeholders
   placeholders["hand"] = document.getElementById("hand-placeholder");
   placeholders["throw"] = document.getElementById("throw-placeholder");

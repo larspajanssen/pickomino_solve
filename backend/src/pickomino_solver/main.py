@@ -106,15 +106,17 @@ async def websocket_simulation(websocket: WebSocket) -> None:
     await websocket.accept()
     logging.info("WebSocket connection accepted")
     cancellation_token = threading.Event()
+    cancel_listener = None
     loop = asyncio.get_event_loop()
-
-    cancel_listener = asyncio.create_task(
-        handle_websocket_cancellation(websocket, cancellation_token)
-    )
 
     try:
         data = await websocket.receive_json()
         req = MCTSRequest(**data)
+
+        # Start cancel listener ONLY AFTER initial request is parsed
+        cancel_listener = asyncio.create_task(
+            handle_websocket_cancellation(websocket, cancellation_token)
+        )
         game_state = GameState(hand=req.hand, dice_throw=req.dice_throw)
         mcts = MCTS(game_state, c_param=200 * math.sqrt(2))
 
@@ -148,9 +150,10 @@ async def websocket_simulation(websocket: WebSocket) -> None:
             pass
     finally:
         cancellation_token.set()
-        cancel_listener.cancel()
-        try:
-            await cancel_listener
-        except asyncio.CancelledError:
-            pass
+        if cancel_listener:
+            cancel_listener.cancel()
+            try:
+                await cancel_listener
+            except asyncio.CancelledError:
+                pass
         logging.info("WebSocket simulation resources cleaned up")

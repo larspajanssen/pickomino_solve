@@ -269,7 +269,7 @@ class MCTS:
     def _get_results(self) -> list[ResultAction]:
         """Compiles the final results from the root node."""
         if not self.root.children:
-            raise Exception("root does not have children")
+            return []
 
         results = []
         for action, child in self.root.children.items():
