@@ -2,6 +2,7 @@
   "name": "pickonmino_solve",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
     "ghcr.io/devcontainers-extra/features/starship:1": {},
     "ghcr.io/va-h/devcontainers-features/uv:1": {
       "shellautocompletion": true
@@ -9,8 +10,7 @@
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
-    },
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    }
   },
   "initializeCommand": {
     "ensure ssh exists": "mkdir -p ~/.ssh",
@@ -18,6 +18,7 @@
     "create permanent fish history": "mkdir -p ~/.devcontainer/${devcontainerId} && touch ~/.devcontainer/${devcontainerId}/fish_history"
   },
   "onCreateCommand": {
+    "prepare config dirs": "mkdir -p ~/.config/fish ~/.config/uv",
     "create venv": "uv venv --clear",
     "uv tox": "uv tool install tox --with tox-uv",
     "uv prek": "uv tool install prek",
@@ -29,7 +30,7 @@
     "prek install-hooks": "prek install-hooks"
   },
   "postCreateCommand": {
-    "setup user workspace": "sh .devcontainer/config-files.sh",
+    "setup user workspace": "bash .devcontainer/config-files.sh",
     "clean up tox": "rm -rf ${containerWorkspaceFolder}/.tox"
   },
   "containerEnv": {
@@ -41,6 +42,7 @@
     "UV_VENV_CLEAR": "true",
     "UV_PROJECT": "${containerWorkspaceFolder}/backend",
     "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/backend/.venv",
+    "PATH": "${containerWorkspaceFolder}/backend/.venv/bin:${localEnv:PATH}",
     // Docker
     "DOCKER_CONFIG": "/home/vscode/.docker-container"
   },
@@ -53,11 +55,6 @@
     {
       "source": "${localEnv:HOME}/.ssh",
       "target": "/home/vscode/.ssh",
-      "type": "bind"
-    },
-    {
-      "source": "${localEnv:HOME}/.config/uv/uv.toml",
-      "target": "/etc/uv/uv.toml",
       "type": "bind"
     },
     {
