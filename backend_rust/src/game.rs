@@ -1,4 +1,7 @@
-enum Action {
+use std::collections::HashSet;
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Action {
     Roll,
     Stop,
     SaveDice(u8),
@@ -11,34 +14,38 @@ const N_DICE: u8 = 8;
 pub struct GameState {
     hand: Vec<u8>,
     dice_throw: Option<Vec<u8>>,
-    score: u32,
 }
 impl GameState {
+    pub fn new(hand: Vec<u8>, dice_throw: Option<Vec<u8>>) -> Self {
+        GameState { hand, dice_throw }
+    }
+}
+
+pub trait State {
+    fn available_actions(&self) -> Vec<Action>;
+    fn compute_score(&self) -> u32;
+}
+
+impl State for GameState {
     fn available_actions(&self) -> Vec<Action> {
-        if self.hand.len() == N_DICE as usize {
+        if self.hand.len() >= N_DICE as usize {
             return vec![Action::Stop];
         }
         match self.dice_throw {
             None => vec![Action::Roll, Action::Stop],
             Some(ref dice) => {
-                let mut die_options: Vec<u8> = Vec::new();
-                // For each die in throw that is not in hand add to options
-                for die in dice {
-                    if !self.hand.contains(die) && !die_options.contains(die) {
-                        die_options.push(*die);
-                    }
-                }
-                // if no options, then bust
-                // else add all options as Action::SaveDice(die_option)
-                if die_options.is_empty() {
+                let actions: HashSet<Action> = dice
+                    .iter()
+                    .filter(|die| !self.hand.contains(die))
+                    .map(|&die| Action::SaveDice(die))
+                    .collect();
+
+                if actions.is_empty() {
                     vec![Action::Bust]
                 } else {
-                    let mut actions = Vec::new();
-                    for die in die_options {
-                        actions.push(Action::SaveDice(die));
-                    }
-                    actions
+                    actions.into_iter().collect()
                 }
+            }
         }
     }
 
