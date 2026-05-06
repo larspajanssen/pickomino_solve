@@ -1,10 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use std::collections::binary_heap::Iter;
 use std::fmt;
 use itertools::Itertools;
-use itertools::structs::CombinationsWithReplacement;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum Action {
     Roll,
     Stop,
@@ -30,7 +28,7 @@ struct ProbGameState {
     state: GameState,
 }
 
-
+#[derive(Debug, Clone)]
 pub struct GameState {
     hand: Vec<u8>,
     dice_throw: Option<Vec<u8>>,
@@ -81,61 +79,67 @@ impl GameState {
     }
 }
 
-pub fn max_expected_score(state: GameState, action: Action) -> u8 {
+pub fn max_expected_score(state: &GameState, action: Action) -> f64 {
     match action {
-        Action::Bust => 0,
-        Action::Stop => state.compute_score(),
+        Action::Bust => 0 as f64,
+        Action::Stop => state.compute_score() as f64,
         Action::SaveDice(select_die) => {
-            match state.dice_throw {
+            match &state.dice_throw {
                 Some(dice_throw) => {
                     let mut new_hand = state.hand.clone();
 
-                    let saved_dice = dice_throw
+                    let saved_dice: Vec<u8> = dice_throw
                         .iter()
                         .filter(|&&die| die == select_die).copied().collect();
 
                     new_hand.extend(saved_dice);
-                    let new_state = GameState::new(state.hand, None).unwrap();
+                    let new_state = GameState::new(new_hand, None).unwrap();
 
-                    let max_score = new_state.available_actions().iter().map(
-                        |&action| max_expected_score(new_state, action)
-                    ).max().unwrap();
+                    new_state.available_actions().iter().map(
+                        |&a| max_expected_score(&new_state, a)
+                    ).reduce(f64::max).unwrap()
 
-                    max_score
+
                 },
                 _ => panic!("No dice thrown, while selecting die is not allowed"),
             }
 
         },
         Action::Roll => {
-            let outcomes_iter = create_distinct_roll_outcomes_iter(state)
-            // TODO
+            let outcomes_iter = create_distinct_roll_outcomes_iter(state);
             // Compute weighted average over max_expected_score of ProbStates
-            1
+            outcomes_iter.map(
+                // For each possible state multiply its probability
+                // with the max_expected_score of that probabilistic state
+                |prob_state| {
+                // Compute over all actions of a next state the max expected score
+                let max_exp_next_score = prob_state.state.available_actions().iter().map(|&a| max_expected_score(&prob_state.state, a)).reduce(f64::max).unwrap();
+                prob_state.prob * max_exp_next_score
+            }).sum() // sum all prob * max_exp_value_prob_state to arrive at max_exp_value
+
         }
 
     }
 }
 
-
-fn create_distinct_roll_outcomes_iter(state: GameState) -> Iter<ProbGameState> {
+fn create_distinct_roll_outcomes_iter(state: &GameState) -> impl Iterator<Item = ProbGameState> {
     let throw_count = (N_DICE as usize) - state.hand.len();
-    let n_outcomes = (N_FACES as f64).powi(N_DICE as i32);
+    let n_outcomes = (N_FACES as f64).powi(throw_count as i32);
 
     // Calculate weight using multinomial coefficient: n! / (n1! * n2! * ... * nk!)
     // where n is total dice, and ni is count of each face
-    let combination_iter = DIE.iter().combinations_with_replacement(throw_count)
+    DIE.iter().combinations_with_replacement(throw_count)
     .map(move |outcome | {
             let prob = (
                 compute_relative_probability(&outcome)
-            ) / (n_outcomes as f64);
+            ) / (n_outcomes);
 
-            let owned_outcome: Vec<u8> = outcome.into_iter().cloned().collect();
+            let outcome: Vec<u8> = outcome.into_iter().cloned().collect();
 
             let new_game_state = GameState::new(
                 state.hand.clone(),
-                Some(owned_outcome)
-            ).unwrap();
+                Some(outcome)
+            ).expect("Failed to create GameState");
 
             ProbGameState{
                 prob,
@@ -150,14 +154,11 @@ fn compute_relative_probability(outcome: &Vec<&u8>) -> f64 {
     let counts = counter(outcome);
     let num_dice = outcome.len();
 
-    let rel_prob = (factorial(num_dice) as f64) / (
+    (factorial(num_dice) as f64) / (
         counts.iter().map(
             |&count| factorial(count as usize) as f64
         ).product::<f64>()
-    );
-
-    rel_prob
-
+    )
 }
 
 fn factorial(integer: usize) -> usize {
