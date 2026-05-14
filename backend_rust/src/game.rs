@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::{collections::HashMap, fmt};
 use itertools::Itertools;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
@@ -10,10 +9,31 @@ pub enum Action {
     Bust,
 }
 
-static DIE: &[u8] = &[1, 2, 3, 4, 5, 6];
+type Cache = HashMap<(GameState, Action), f64>;
+
+pub struct ActionIter {
+    actions: [Action; N_FACES as usize + 2],
+    index: usize,
+    len: usize,
+}
+impl Iterator for ActionIter {
+    type Item = Action;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.len {
+            let res = Some(self.actions[self.index]);
+            self.index += 1;
+            res
+        } else {
+            None
+        }
+    }
+}
+
 const N_FACES: u8 = 6;
 const N_DICE: u8 = 8;
-const WORM: u8 = 6;
+const WORM_INDEX: u8 = 5;
+const WORM_FACE_VALUE: u8 = 6;
+
 
 #[derive(Debug)]
 pub struct GameStateCreationError;
@@ -28,14 +48,14 @@ struct ProbGameState {
     state: GameState,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GameState {
-    hand: Vec<u8>,
-    dice_throw: Option<Vec<u8>>,
+    hand: [u8; N_FACES as usize],
+    dice_throw: Option<[u8; N_FACES as usize]>,
 }
 impl GameState {
-    pub fn new(hand: Vec<u8>, dice_throw: Option<Vec<u8>>) -> Result<GameState, GameStateCreationError> {
-        let valid_size = hand.len() + dice_throw.as_ref().map(|v| v.len()).unwrap_or(0) <= N_DICE.into();
+    pub fn new(hand: [u8; N_FACES as usize], dice_throw: Option<[u8; N_FACES as usize]>) -> Result<GameState, GameStateCreationError> {
+        let valid_size = hand.iter().sum::<u8>() + dice_throw.unwrap_or([0; N_FACES as usize]).iter().sum::<u8>() <= N_DICE;
         match valid_size {
             true => {
                 Ok(GameState { hand, dice_throw })
@@ -44,62 +64,78 @@ impl GameState {
         }
     }
 
-    pub fn available_actions(&self) -> Vec<Action> {
-        if self.hand.len() >= N_DICE as usize {
-            return vec![Action::Stop];
+    pub fn available_actions(&self) -> ActionIter {
+        let mut actions = [Action::Stop; 8];
+        let mut len = 0;
+
+        let hand_count = self.hand.iter().sum::<u8>();
+
+        if hand_count >= N_DICE {
+            actions[0] = Action::Stop;
+            return ActionIter { actions, index: 0, len: 1 }
         }
         match self.dice_throw {
-            None => vec![Action::Roll, Action::Stop],
-            Some(ref dice) => {
-                let actions: HashSet<Action> = dice
-                    .iter()
-                    .filter(|die| !self.hand.contains(die))
-                    .map(|&die| Action::SaveDice(die))
-                    .collect();
-
-                if actions.is_empty() {
-                    vec![Action::Bust]
-                } else {
-                    actions.into_iter().collect()
+            None => {
+                actions[0] = Action::Roll;
+                actions[1] = Action::Stop;
+                ActionIter { actions, index: 0, len: 2 }
+            }
+            Some(dice) => {
+                for idx in 0..N_FACES {
+                    if dice[idx as usize] > 0 && self.hand[idx as usize] == 0 {
+                        actions[len] = Action::SaveDice(idx + 1);
+                        len += 1;
+                    }
                 }
+                if len == 0 {
+                    actions[0] = Action::Bust;
+                    len = 1;
+                }
+                ActionIter { actions, index: 0, len }
+
             }
         }
     }
 
     pub fn compute_score(&self) -> u8 {
-        if !self.hand.contains(&WORM) {
+        if self.hand[WORM_INDEX as usize] == 0 {
             return 0;
         }
-        self.hand.iter().map(|&die| {
-            match die {
-                6 => 5,
+        self.hand.iter().enumerate().map(|(i, &count)| {
+            let face_val = (i+1) as u8;
+            let score = match face_val {
+                WORM_FACE_VALUE => 5,
                 val => val,
-            }
+            };
+            count * score
         }).sum()
     }
 }
 
-pub fn max_expected_score(state: &GameState, action: Action) -> f64 {
-    match action {
-        Action::Bust => 0 as f64,
-        Action::Stop => state.compute_score() as f64,
+pub fn max_expected_score(
+    state: &GameState,
+    action: Action,
+    cache: &mut Cache,
+) -> f64 {
+    if let Some(&score) = cache.get(&(*state, action)) {
+        return score;
+    }
+    let result = match action {
+        Action::Bust => 0.0,
+        Action::Stop => {
+            state.compute_score() as f64
+        },
         Action::SaveDice(select_die) => {
             match &state.dice_throw {
                 Some(dice_throw) => {
-                    let mut new_hand = state.hand.clone();
-
-                    let saved_dice: Vec<u8> = dice_throw
-                        .iter()
-                        .filter(|&&die| die == select_die).copied().collect();
-
-                    new_hand.extend(saved_dice);
-                    let new_state = GameState::new(new_hand, None).unwrap();
-
-                    new_state.available_actions().iter().map(
-                        |&a| max_expected_score(&new_state, a)
+                    let select_die_idx = select_die - 1;
+                    let count_selected_dice = dice_throw[select_die_idx as usize];
+                    let mut new_state = *state;
+                    new_state.hand[select_die_idx as usize] += count_selected_dice;
+                    new_state.dice_throw = None;
+                    new_state.available_actions().map(
+                        |a| max_expected_score(&new_state, a, cache)
                     ).reduce(f64::max).unwrap()
-
-
                 },
                 _ => panic!("No dice thrown, while selecting die is not allowed"),
             }
@@ -113,49 +149,45 @@ pub fn max_expected_score(state: &GameState, action: Action) -> f64 {
                 // with the max_expected_score of that probabilistic state
                 |prob_state| {
                 // Compute over all actions of a next state the max expected score
-                let max_exp_next_score = prob_state.state.available_actions().iter().map(|&a| max_expected_score(&prob_state.state, a)).reduce(f64::max).unwrap();
+                let max_exp_next_score = prob_state.state.available_actions().map(|a| max_expected_score(&prob_state.state, a, cache)).reduce(f64::max).unwrap();
                 prob_state.prob * max_exp_next_score
             }).sum() // sum all prob * max_exp_value_prob_state to arrive at max_exp_value
-
         }
+    };
+    cache.insert((*state, action), result);
 
-    }
+    result
 }
 
 fn create_distinct_roll_outcomes_iter(state: &GameState) -> impl Iterator<Item = ProbGameState> {
-    let throw_count = (N_DICE as usize) - state.hand.len();
-    let n_outcomes = (N_FACES as f64).powi(throw_count as i32);
+    let throw_count: usize = (N_DICE - state.hand.iter().sum::<u8>()) as usize;
+    let throw_count_factorial = factorial(throw_count);
+    let total_outcomes = (N_FACES as f64).powi(throw_count as i32);
 
-    // Calculate weight using multinomial coefficient: n! / (n1! * n2! * ... * nk!)
-    // where n is total dice, and ni is count of each face
-    DIE.iter().combinations_with_replacement(throw_count)
-    .map(move |outcome | {
-            let prob = (
-                compute_relative_probability(&outcome)
-            ) / (n_outcomes);
+    let outcome_values = (0..N_FACES).combinations_with_replacement(throw_count);
+    outcome_values.map(move |outcome| {
+        let mut frequency_map = [0u8; N_FACES as usize];
+        for face in outcome {
+            frequency_map[face as usize] += 1;
+        }
+        let mut new_state = *state;
+        new_state.dice_throw = Some(frequency_map);
 
-            let outcome: Vec<u8> = outcome.into_iter().cloned().collect();
-
-            let new_game_state = GameState::new(
-                state.hand.clone(),
-                Some(outcome)
-            ).expect("Failed to create GameState");
-
-            ProbGameState{
-                prob,
-                state: new_game_state,
+        ProbGameState {
+            prob: compute_relative_probability(&frequency_map, throw_count_factorial) / total_outcomes,
+            state: {
+                new_state
             }
+        }
+        }
+    )
 
-        })
 
 }
 
-fn compute_relative_probability(outcome: &Vec<&u8>) -> f64 {
-    let counts = counter(outcome);
-    let num_dice = outcome.len();
-
-    (factorial(num_dice) as f64) / (
-        counts.iter().map(
+fn compute_relative_probability(frequency_map: &[u8; N_FACES as usize], n_total_factorial: usize) -> f64 {
+    n_total_factorial as f64 / (
+        frequency_map.iter().map(
             |&count| factorial(count as usize) as f64
         ).product::<f64>()
     )
@@ -166,22 +198,4 @@ fn factorial(integer: usize) -> usize {
         return 1
     }
     integer * factorial(integer - 1)
-}
-
-fn counter(input: &[&u8]) -> Vec<u8> {
-    let mut counts = HashMap::new();
-    let mut order = Vec::new();
-
-    for &&num in input {
-        let count = counts.entry(num).or_insert(0u8);
-        if *count == 0 {
-            order.push(num);
-        }
-        *count += 1;
-    }
-
-    order.into_iter()
-        .map(|num| counts[&num])
-        .collect()
-
 }
