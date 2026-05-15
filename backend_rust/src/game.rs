@@ -29,7 +29,7 @@ impl Iterator for ActionIter {
     }
 }
 
-const N_FACES: u8 = 6;
+pub const N_FACES: u8 = 6;
 const N_DICE: u8 = 8;
 const WORM_INDEX: u8 = 5;
 const WORM_FACE_VALUE: u8 = 6;
