@@ -23,6 +23,15 @@ app.add_middleware(
 
 
 class Request(BaseModel):
+    """Request payload for the solver API.
+
+    Attributes:
+        hand: Frequency vector of length 6 for saved dice in hand. Index 0 is
+            face value 1, and index 5 is face value 6.
+        dice_throw: Optional frequency vector of length 6 for the current throw.
+            Uses the same index-to-face mapping as `hand`.
+    """
+
     hand: list[int] = []
     dice_throw: list[int] | None = None
 
@@ -33,27 +42,45 @@ class Action(TypedDict):
 
 
 @app.post("/api/run")
-def run_mcts(req: Request):
-    results = compute_state_scores(req.hand, req.dice_throw)
-    return {"actions": serialize_mcts_results(results)}
-
-
-def serialize_mcts_results(
-    results: Sequence[tuple[Action, float]],
-) -> list[dict[str, Any]]:
-    """
-    Converts MCTS result actions to strings for JSON serialization.
+def run(req: Request):
+    """Compute ranked action expected values for the given game state.
 
     Args:
-        results: Sequence of result dictionaries from MCTS.
+        req: Solver request containing frequency-vector dice state.
 
     Returns:
-        List of dictionaries with stringified actions.
+        dict[str, list[dict[str, Any]]]: Serialized action rankings keyed by
+            `"actions"`.
     """
-    return [
-        {
-            "action": f"{action['type']} {action.get('value', '')}",
-            "expected_value": expected_value,
-        }
-        for (action, expected_value) in results
-    ]
+    results = compute_state_scores(req.hand, req.dice_throw)
+    return {"actions": serialize_results(results)}
+
+
+def serialize_results(
+    results: Sequence[tuple[Action, float]],
+) -> list[dict[str, Any]]:
+    """Convert solver actions to JSON-friendly dictionaries.
+
+    Args:
+        results: Sequence of `(action, expected_value)` tuples from the solver.
+
+    Returns:
+        list[dict[str, Any]]: Action entries with string labels and expected
+            values.
+    """
+    serialized: list[dict[str, Any]] = []
+    for action, expected_value in results:
+        if isinstance(action, dict):
+            action_type = action["type"]
+            action_value = action.get("value", "")
+        else:
+            action_type = getattr(action, "action_type")
+            action_value = getattr(action, "dice_value", "")
+
+        serialized.append(
+            {
+                "action": f"{action_type} {action_value}",
+                "expected_value": expected_value,
+            }
+        )
+    return serialized
