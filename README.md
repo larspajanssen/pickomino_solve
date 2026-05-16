@@ -15,7 +15,7 @@ A web-based implementation of the Regenwormen / Pickomino dice game with an AI s
 ### Prerequisites
 
 - Docker and Docker Compose
-- For local backend development: Python 3.12+, `uv`, and a Rust toolchain
+- For local API development: Python 3.12+, `uv`, and a Rust toolchain
 
 ### Quick Start
 
@@ -29,36 +29,36 @@ Open the app in your browser at:
 
 - Frontend: `http://localhost`
 
-The frontend proxies API requests to the backend container automatically, so you do not need to expose the backend port publicly for normal use.
+The frontend proxies API requests to the API container automatically, so you do not need to expose the API port publicly for normal use.
 
 ## Development
 
 The project is split into three parts:
 
 - `frontend/`: Static UI served by nginx, including the `/api/` proxy configuration.
-- `backend/`: FastAPI application that wraps and exposes the solver.
-- `backend_rust/`: Rust/PyO3 solver crate used by the backend package.
+- `api/`: FastAPI application that wraps and exposes the solver.
+- `solver/`: Rust/PyO3 solver crate used by the API package.
 
 ### Backend Setup
 
 ```bash
-cd backend
+cd api
 uv sync
 uv run uvicorn pickomino_solver.main:app --reload --host 0.0.0.0 --port 6000
 ```
 
 ### Rust Solver Development
 
-The performance-critical game logic is implemented in `backend_rust/src/`.
+The performance-critical game logic is implemented in `solver/src/`.
 
 ```bash
-cd backend_rust
+cd solver
 cargo test
 ```
 
 ## API
 
-The backend exposes a single solver endpoint:
+The API exposes a single solver endpoint:
 
 - `POST /api/run`
 

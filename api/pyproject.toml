@@ -26,6 +26,6 @@ build-backend = "maturin"
 extend-select = ["I"]
 
 [tool.maturin]
-manifest-path = "../backend_rust/Cargo.toml"
+manifest-path = "../solver/Cargo.toml"
 module-name = "pickomino_solver"
 python-source = "src"

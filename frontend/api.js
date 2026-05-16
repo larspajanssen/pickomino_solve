@@ -4,7 +4,7 @@ class SimulationAPI {
   }
 
   /**
-   * Sends a single REST request to the solver backend.
+   * Sends a single REST request to the solver API.
    *
    * Expected payload shape:
    * - `hand`: number[6] frequency vector for die faces 1..6
@@ -21,21 +21,21 @@ class SimulationAPI {
         body: JSON.stringify(params),
       });
     } catch {
-      throw new Error("Network error while contacting backend");
+      throw new Error("Network error while contacting API");
     }
 
     let payload;
     try {
       payload = await response.json();
     } catch {
-      throw new Error("Backend returned invalid JSON");
+      throw new Error("API returned invalid JSON");
     }
 
     if (!response.ok) {
       const message =
         payload && typeof payload.detail === "string"
           ? payload.detail
-          : "Backend request failed";
+          : "API request failed";
       throw new Error(message);
     }
 

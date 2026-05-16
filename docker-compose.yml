@@ -1,8 +1,8 @@
 services:
-  backend:
+  api:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: api/Dockerfile
     expose:
       - "6000"
     healthcheck:
@@ -26,7 +26,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      backend:
+      api:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
