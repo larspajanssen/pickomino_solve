@@ -1,6 +1,6 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-WORKDIR /app/backend
+WORKDIR /app/api
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -13,13 +13,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependency set first to maximize layer cache reuse.
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY api/pyproject.toml api/uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # Copy project sources and install the package.
-COPY backend ./
-COPY backend_rust /app/backend_rust
+COPY api ./
+COPY solver /app/solver
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 

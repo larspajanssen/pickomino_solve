@@ -47,9 +47,9 @@
     "UV_LINK_MODE": "symlink",
     "UV_PYTHON": "3.13",
     "UV_VENV_CLEAR": "true",
-    "UV_PROJECT": "${containerWorkspaceFolder}/backend",
-    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/backend/.venv",
-    "PATH": "${containerWorkspaceFolder}/backend/.venv/bin:${localEnv:PATH}",
+    "UV_PROJECT": "${containerWorkspaceFolder}/api",
+    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/api/.venv",
+    "PATH": "${containerWorkspaceFolder}/api/.venv/bin:${localEnv:PATH}",
     // Docker
     "DOCKER_CONFIG": "/home/vscode/.docker-container"
   },
@@ -76,11 +76,11 @@
       "settings": {
         "terminal.integrated.defaultProfile.linux": "fish",
         "python.analysis.typeCheckingMode": "basic",
-        "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+        "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
         "python.linting.enabled": true,
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
-        "python.testing.pytestPath": "${workspaceFolder}/backend/.venv/bin/pytest",
+        "python.testing.pytestPath": "${workspaceFolder}/api/.venv/bin/pytest",
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true,

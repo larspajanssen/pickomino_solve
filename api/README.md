@@ -2,7 +2,7 @@
 
 This directory contains the FastAPI wrapper around the Rust-backed Pickomino solver.
 
-The backend accepts normalized dice state from the frontend, calls the solver exposed by `backend_rust/`, and serializes the ranked actions returned to the browser.
+The API accepts normalized dice state from the frontend, calls the solver exposed by `solver/`, and serializes the ranked actions returned to the browser.
 
 ## API
 
@@ -30,7 +30,7 @@ The response contains an `actions` array with action labels and expected values.
 
 - Python 3.12+
 - [`uv`](https://github.com/astral-sh/uv)
-- Rust toolchain (`cargo`, `rustup`), because the Python package builds the solver extension from `../backend_rust`
+- Rust toolchain (`cargo`, `rustup`), because the Python package builds the solver extension from `../solver`
 
 ### Setup
 
@@ -46,9 +46,9 @@ uv run uvicorn pickomino_solver.main:app --reload --host 0.0.0.0 --port 6000
 
 ### Solver Development
 
-The Rust crate lives in `../backend_rust/`.
+The Rust crate lives in `../solver/`.
 
 ```bash
-cd ../backend_rust
+cd ../solver
 cargo test
 ```
