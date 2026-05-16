@@ -2,19 +2,26 @@
 let hand = [];
 let diceThrow = [];
 let currentFocus = "hand"; // 'hand' or 'throw'
-let chartInstance = null;
-let simulationHistory = []; // Local history tracking
-let simulationStartTime = 0;
 let api;
-const COLORS = [
-  "#FF6384",
-  "#36A2EB",
-  "#FFCE56",
-  "#4BC0C0",
-  "#9966FF",
-  "#FF9F40",
-];
 const placeholders = {};
+
+/**
+ * Converts raw die face values (1-6) into a fixed-length frequency vector.
+ * Index 0 stores count of face 1, index 5 stores count of face 6.
+ *
+ * Backend contract:
+ * - `hand` must be a list of length 6
+ * - `dice_throw` must be null or a list of length 6
+ */
+function toFrequencyVector(diceArray) {
+  const frequency = [0, 0, 0, 0, 0, 0];
+  for (const value of diceArray) {
+    if (value >= 1 && value <= 6) {
+      frequency[value - 1] += 1;
+    }
+  }
+  return frequency;
+}
 
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
@@ -176,174 +183,50 @@ function validateState() {
   }
 }
 
-// Thinking Time Slider
-document
-  .getElementById("thinking-time")
-  .addEventListener("input", function (e) {
-    document.getElementById("time-value").textContent = e.target.value;
-  });
-
 // Form Submission
-document.getElementById("game-form").addEventListener("submit", function (e) {
-  e.preventDefault();
-  if (!validateState()) return;
+document
+  .getElementById("game-form")
+  .addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!validateState()) return;
 
-  const thinking_time = Number(document.getElementById("thinking-time").value);
+    // Show Loading State
+    const submitBtn = document.getElementById("submit-btn");
+    const originalText = submitBtn.textContent;
 
-  // Show Loading State
-  const submitBtn = document.getElementById("submit-btn");
-  const cancelBtn = document.getElementById("cancel-btn");
-  const originalText = submitBtn.textContent;
+    submitBtn.textContent = "Running Simulation...";
+    submitBtn.disabled = true;
+    document.getElementById("results").style.display = "block";
 
-  submitBtn.textContent = "Running Simulation...";
-  submitBtn.disabled = true;
-  cancelBtn.style.display = "block";
-
-  simulationHistory = [];
-  simulationStartTime = Date.now();
-  document.getElementById("results").style.display = "block";
-
-  api.start(
-    { hand, dice_throw: diceThrow.length ? diceThrow : null, thinking_time },
-    {
-      onProgress: (actions) => {
-        // Track history locally
-        const timestamp = (Date.now() - simulationStartTime) / 1000;
-        simulationHistory.push({ time: timestamp, actions });
-        renderResults(actions);
-      },
-      onComplete: (actions) => {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        cancelBtn.style.display = "none";
-        renderResults(actions);
-      },
-      onError: (message) => {
-        alert("Error: " + message);
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        cancelBtn.style.display = "none";
-      },
-    },
-  );
-});
-
-document.getElementById("cancel-btn").addEventListener("click", () => {
-  api.cancel();
-});
+    try {
+      const response = await api.run({
+        hand: toFrequencyVector(hand),
+        dice_throw: diceThrow.length ? toFrequencyVector(diceThrow) : null,
+      });
+      renderResults(response.actions ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert("Error: " + message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
 
 function renderResults(actions) {
   const tbody = document.querySelector("#results-table tbody");
   tbody.innerHTML = "";
 
-  // Sort actions by expected_score descending
-  actions.sort((a, b) => b.expected_score - a.expected_score);
+  // Sort actions by expected_value descending
+  actions.sort((a, b) => b.expected_value - a.expected_value);
 
   actions.forEach((action) => {
-    // Table row
     const tr = document.createElement("tr");
     const score =
-      typeof action.expected_score === "number"
-        ? action.expected_score.toFixed(3)
-        : action.expected_score;
-    tr.innerHTML = `<td>${action.action}</td><td>${score}</td><td>${action.visit_count}</td>`;
+      typeof action.expected_value === "number"
+        ? action.expected_value.toFixed(3)
+        : action.expected_value;
+    tr.innerHTML = `<td>${action.action}</td><td>${score}</td>`;
     tbody.appendChild(tr);
-  });
-
-  // Prepare datasets for chart from local history
-  const actionNames = actions.map((a) => a.action);
-
-  const datasets = actionNames
-    .map((name, index) => {
-      const data = simulationHistory
-        .map((h) => {
-          const actionData = h.actions.find((a) => a.action === name);
-          return {
-            x: h.time,
-            y: actionData ? actionData.expected_score : null,
-          };
-        })
-        .filter((d) => d.y !== null);
-
-      if (data.length === 0) return null;
-
-      return {
-        label: name,
-        data: data,
-        borderColor: COLORS[index % COLORS.length],
-        fill: false,
-        tension: 0.1,
-        pointRadius: 0, // Performance optimization for live updates
-      };
-    })
-    .filter((ds) => ds !== null);
-
-  renderChart(datasets);
-}
-
-function renderChart(datasets) {
-  const ctx = document.getElementById("convergence-chart").getContext("2d");
-
-  // Dark theme for chart
-  Chart.defaults.color = "#e0e0e0";
-  Chart.defaults.borderColor = "rgba(255, 255, 255, 0.1)";
-
-  if (chartInstance) {
-    chartInstance.data.datasets = datasets;
-    chartInstance.update("none"); // Update without animation for smoothness
-    return;
-  }
-
-  chartInstance = new Chart(ctx, {
-    type: "line",
-    data: {
-      datasets: datasets,
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: "index",
-        intersect: false,
-      },
-      scales: {
-        x: {
-          type: "linear",
-          title: {
-            display: true,
-            text: "Time (s)",
-            color: "#aaaaaa",
-          },
-          grid: {
-            color: "rgba(255, 255, 255, 0.05)",
-          },
-        },
-        y: {
-          title: {
-            display: true,
-            text: "Expected Score",
-            color: "#aaaaaa",
-          },
-          grid: {
-            color: "rgba(255, 255, 255, 0.05)",
-          },
-        },
-      },
-      plugins: {
-        title: {
-          display: true,
-          text: "Action Score Convergence",
-          color: "#e0e0e0",
-          font: {
-            size: 16,
-          },
-        },
-        legend: {
-          labels: {
-            color: "#e0e0e0",
-          },
-        },
-      },
-    },
   });
 }

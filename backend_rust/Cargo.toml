@@ -1,0 +1,12 @@
+[package]
+name = "pickomino-solver"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "pickomino_solver"
+crate-type = ["cdylib"]
+
+[dependencies]
+itertools = "0.14.0"
+pyo3 = { version = "0.28.3", features = ["extension-module"] }

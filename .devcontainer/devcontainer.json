@@ -10,6 +10,13 @@
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "latest",
+      "profile": "minimal"
+    },
+    "ghcr.io/devcontainers/features/common-utils:1": {
+      "configureZshAsDefaultShell": true
     }
   },
   "initializeCommand": {
@@ -82,6 +89,14 @@
             "source.organizeImports": "explicit"
           }
         },
+        "editor.semanticHighlighting.enabled": true,
+        "editor.inlayHints.enabled": "on",
+        "rust-analyzer.check.command": "clippy", // Use clippy instead of 'cargo check' for better lints
+        "rust-analyzer.cargo.buildScripts.enable": true,
+        "rust-analyzer.procMacro.enable": true, // Essential for crates like serde or tokio
+        "rust-analyzer.completion.autoimport.enable": true,
+        "rust-analyzer.testExplorer.enable": true,
+        "testing.autoRun.mode": "allInWorkspace",
         "cSpell.customDictionaries": {
           "custom-dictionary-workspace": {
             "name": "custom-dictionary-workspace",
@@ -98,7 +113,10 @@
         "charliermarsh.ruff",
         "tamasfe.even-better-toml",
         "yzhang.markdown-all-in-one",
-        "streetsidesoftware.code-spell-checker"
+        "streetsidesoftware.code-spell-checker",
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb"
       ]
     }
   },

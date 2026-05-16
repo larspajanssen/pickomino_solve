@@ -1,68 +1,45 @@
 class SimulationAPI {
-  constructor(url = `ws://${window.location.host}/ws/simulation`) {
+  constructor(url = "/api/run") {
     this.url = url;
-    this.socket = null;
-    this.onProgress = null;
-    this.onComplete = null;
-    this.onError = null;
   }
 
-  start(params, { onProgress, onComplete, onError }) {
-    if (this.socket) {
-      this.socket.close();
+  /**
+   * Sends a single REST request to the solver backend.
+   *
+   * Expected payload shape:
+   * - `hand`: number[6] frequency vector for die faces 1..6
+   * - `dice_throw`: null or number[6] frequency vector for die faces 1..6
+   */
+  async run(params) {
+    let response;
+    try {
+      response = await fetch(this.url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+    } catch {
+      throw new Error("Network error while contacting backend");
     }
 
-    this.onProgress = onProgress;
-    this.onComplete = onComplete;
-    this.onError = onError;
-
-    // Determine protocol based on current window location
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/simulation`;
-
-    this.socket = new WebSocket(wsUrl);
-
-    this.socket.onopen = () => {
-      console.log("WebSocket Connected");
-      this.socket.send(JSON.stringify(params));
-    };
-
-    this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      switch (data.type) {
-        case "progress":
-          if (this.onProgress) this.onProgress(data.actions);
-          break;
-        case "complete":
-          if (this.onComplete) this.onComplete(data.actions);
-          this.socket.close();
-          this.socket = null;
-          break;
-        case "error":
-          if (this.onError) this.onError(data.message);
-          this.socket.close();
-          this.socket = null;
-          break;
-      }
-    };
-
-    this.socket.onerror = (error) => {
-      if (this.onError) this.onError("WebSocket Connection Error");
-      this.socket = null;
-    };
-
-    this.socket.onclose = () => {
-      console.log("WebSocket Disconnected");
-      this.socket = null;
-    };
-  }
-
-  cancel() {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type: "cancel" }));
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Backend returned invalid JSON");
     }
+
+    if (!response.ok) {
+      const message =
+        payload && typeof payload.detail === "string"
+          ? payload.detail
+          : "Backend request failed";
+      throw new Error(message);
+    }
+
+    return payload;
   }
 }
 
