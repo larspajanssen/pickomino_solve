@@ -48,9 +48,10 @@ impl PyAction {
 /// Returns a list of `(action, expected_score)` tuples for the current state.
 pub fn compute_state_scores(
     hand: [u8; game::N_FACES as usize],
-    throw: Option<[u8; game::N_FACES as usize]>
+    throw: Option<[u8; game::N_FACES as usize]>,
+    tiles: [u8; game::N_TILES as usize],
 ) -> PyResult<Vec<(PyAction, f64)>> {
-    let state = GameState::new(hand, throw).map_err(|err| {
+    let state = GameState::new(hand, throw, tiles).map_err(|err| {
         PyValueError::new_err(format!("Problem initializing state {err}"))
     })?;
     let mut cache = HashMap::new();

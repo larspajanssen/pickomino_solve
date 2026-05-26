@@ -33,6 +33,7 @@ class Request(BaseModel):
     """
 
     hand: list[int] = []
+    tiles: list[int]
     dice_throw: list[int] | None = None
 
 
@@ -52,7 +53,7 @@ def run(req: Request):
         dict[str, list[dict[str, Any]]]: Serialized action rankings keyed by
             `"actions"`.
     """
-    results = compute_state_scores(req.hand, req.dice_throw)
+    results = compute_state_scores(req.hand, req.dice_throw, req.tiles)
     return {"actions": serialize_results(results)}
 
 
@@ -79,7 +80,7 @@ def serialize_results(
 
         serialized.append(
             {
-                "action": f"{action_type} {action_value}",
+                "action": f"{action_type} {action_value if action_value else ''}",
                 "expected_value": expected_value,
             }
         )

@@ -66,6 +66,7 @@ Request payload:
 
 - `hand`: frequency vector of length 6 for saved dice
 - `dice_throw`: optional frequency vector of length 6 for the current throw
+- `tiles`: list of tiles that are available to choose from
 
 ## License
 
