@@ -30,6 +30,7 @@ class Request(BaseModel):
             face value 1, and index 5 is face value 6.
         dice_throw: Optional frequency vector of length 6 for the current throw.
             Uses the same index-to-face mapping as `hand`.
+        tiles: Tiles that are available to the player to pick up when in a stop state.
     """
 
     hand: list[int] = []
@@ -51,7 +52,8 @@ def run(req: Request):
 
     Returns:
         dict[str, list[dict[str, Any]]]: Serialized action rankings keyed by
-            `"actions"`.
+            `"actions"`. Containing a list of json dicts with keys: `action`, `expected_value`.
+            The expected value is expressed in number of worms.
     """
     results = compute_state_scores(req.hand, req.dice_throw, req.tiles)
     return {"actions": serialize_results(results)}
