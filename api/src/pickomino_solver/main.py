@@ -33,8 +33,8 @@ class Request(BaseModel):
     """
 
     hand: list[int] = []
-    tiles: list[int]
     dice_throw: list[int] | None = None
+    tiles: list[int] = list(range(21, 37))
 
 
 class Action(TypedDict):
@@ -80,7 +80,7 @@ def serialize_results(
 
         serialized.append(
             {
-                "action": f"{action_type} {action_value if action_value else ''}",
+                "action": f"{action_type}{' ' + str(action_value) if action_value else ''}",
                 "expected_value": expected_value,
             }
         )
