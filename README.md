@@ -35,7 +35,7 @@ The frontend proxies API requests to the API container automatically, so you do 
 
 The project is split into three parts:
 
-- `frontend/`: Static UI served by nginx, including the `/api/` proxy configuration.
+- `frontend/`: Static UI served by nginx, including the `/api/` proxy configuration. In all transparency, the frontend is written by an LLM.
 - `api/`: FastAPI application that wraps and exposes the solver.
 - `solver/`: Rust/PyO3 solver crate used by the API package.
 

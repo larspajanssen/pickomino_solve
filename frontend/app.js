@@ -2,6 +2,7 @@
 let hand = [];
 let diceThrow = [];
 let currentFocus = "hand"; // 'hand' or 'throw'
+let availableTiles = new Set(Array.from({ length: 16 }, (_, i) => i + 21));
 let api;
 const placeholders = {};
 
@@ -30,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   placeholders["hand"] = document.getElementById("hand-placeholder");
   placeholders["throw"] = document.getElementById("throw-placeholder");
   updateUI();
+  renderTiles();
 });
 
 // Dice Management
@@ -202,6 +204,7 @@ document
       const response = await api.run({
         hand: toFrequencyVector(hand),
         dice_throw: diceThrow.length ? toFrequencyVector(diceThrow) : null,
+        tiles: Array.from(availableTiles).sort((a, b) => a - b),
       });
       renderResults(response.actions ?? []);
     } catch (error) {
@@ -229,4 +232,54 @@ function renderResults(actions) {
     tr.innerHTML = `<td>${action.action}</td><td>${score}</td>`;
     tbody.appendChild(tr);
   });
+}
+
+// Tiles rendering and management
+function renderTiles() {
+  const poolEl = document.getElementById("tiles-pool");
+  if (!poolEl) return;
+  poolEl.innerHTML = "";
+
+  for (let i = 21; i <= 36; i++) {
+    const tileDiv = document.createElement("button");
+    tileDiv.type = "button";
+    const isActive = availableTiles.has(i);
+    tileDiv.className = `tile ${isActive ? "active" : "turned-over"}`;
+    tileDiv.onclick = () => toggleTile(i);
+    tileDiv.title = `Click to toggle availability of tile ${i}`;
+
+    let wormCount = 1;
+    if (i >= 25 && i <= 28) wormCount = 2;
+    else if (i >= 29 && i <= 32) wormCount = 3;
+    else if (i >= 33 && i <= 36) wormCount = 4;
+
+    const wormsStr = "🪱".repeat(wormCount);
+
+    tileDiv.innerHTML = `
+      <div class="tile-number">${i}</div>
+      <div class="tile-divider"></div>
+      <div class="tile-worms">${wormsStr}</div>
+    `;
+    poolEl.appendChild(tileDiv);
+  }
+}
+
+function toggleTile(value) {
+  if (availableTiles.has(value)) {
+    availableTiles.delete(value);
+  } else {
+    availableTiles.add(value);
+  }
+  renderTiles();
+}
+
+function toggleAllTiles(allActive) {
+  if (allActive) {
+    for (let i = 21; i <= 36; i++) {
+      availableTiles.add(i);
+    }
+  } else {
+    availableTiles.clear();
+  }
+  renderTiles();
 }
