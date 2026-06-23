@@ -1,4 +1,5 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+# Stage 1: Build stage
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 WORKDIR /app/api
 
@@ -17,12 +18,24 @@ COPY api/pyproject.toml api/uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
-# Copy project sources and install the package.
+# Copy project sources and compile the package in non-editable mode.
 COPY api ./
 COPY solver /app/solver
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-editable
+
+# Stage 2: Runtime stage
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runner
+
+WORKDIR /app/api
+
+# Copy the built virtual environment
+COPY --from=builder /app/api/.venv /app/api/.venv
+
+# Add virtual environment binaries to the PATH
+ENV PATH="/app/api/.venv/bin:${PATH}"
 
 EXPOSE 6000
 
-CMD ["uv", "run", "uvicorn", "pickomino_solver.main:app", "--workers", "1", "--host", "0.0.0.0", "--port", "6000"]
+# Run uvicorn directly from the virtual environment
+CMD ["uvicorn", "pickomino_solver.main:app", "--workers", "1", "--host", "0.0.0.0", "--port", "6000"]

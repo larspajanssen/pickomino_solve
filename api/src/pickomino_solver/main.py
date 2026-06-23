@@ -7,9 +7,9 @@ from pydantic import BaseModel
 
 from pickomino_solver import compute_state_scores
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -30,10 +30,12 @@ class Request(BaseModel):
             face value 1, and index 5 is face value 6.
         dice_throw: Optional frequency vector of length 6 for the current throw.
             Uses the same index-to-face mapping as `hand`.
+        tiles: Tiles that are available to the player to pick up when in a stop state.
     """
 
     hand: list[int] = []
     dice_throw: list[int] | None = None
+    tiles: list[int] = list(range(21, 37))
 
 
 class Action(TypedDict):
@@ -50,9 +52,11 @@ def run(req: Request):
 
     Returns:
         dict[str, list[dict[str, Any]]]: Serialized action rankings keyed by
-            `"actions"`.
+            `"actions"`. Containing a list of json dicts with keys: `action`, `expected_value`.
+            The expected value is expressed in number of worms.
     """
-    results = compute_state_scores(req.hand, req.dice_throw)
+    logger.info(f"Handling run for: {req}")
+    results = compute_state_scores(req.hand, req.dice_throw, req.tiles)
     return {"actions": serialize_results(results)}
 
 
@@ -79,7 +83,7 @@ def serialize_results(
 
         serialized.append(
             {
-                "action": f"{action_type} {action_value}",
+                "action": f"{action_type}{' ' + str(action_value) if action_value else ''}",
                 "expected_value": expected_value,
             }
         )

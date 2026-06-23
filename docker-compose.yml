@@ -13,7 +13,7 @@ services:
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6000/docs')",
         ]
-      interval: 15s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -30,7 +30,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
-      interval: 15s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 5s

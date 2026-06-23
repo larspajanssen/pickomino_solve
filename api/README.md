@@ -12,13 +12,15 @@ Request body:
 
 - `hand`: frequency vector of length 6 for the saved dice
 - `dice_throw`: optional frequency vector of length 6 for the current throw
+- `tiles`: list of tiles that are available to choose from
 
 Example:
 
 ```json
 {
   "hand": [0, 0, 0, 0, 1, 1],
-  "dice_throw": [0, 1, 0, 0, 0, 1]
+  "dice_throw": [0, 1, 0, 0, 0, 1],
+  "tiles": [24, 25, 34]
 }
 ```
 

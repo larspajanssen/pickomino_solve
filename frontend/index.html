@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pickomino Solver</title>
-    <link rel="stylesheet" href="style.css?v=2" />
+    <link rel="stylesheet" href="style.css?v=3" />
   </head>
 
   <body>
@@ -85,6 +85,30 @@
               <div class="worm-face">🪱</div>
             </button>
           </div>
+        </div>
+
+        <!-- Available Tiles -->
+        <div class="section">
+          <div class="pool-label-row">
+            <h2>Available Tiles</h2>
+            <div class="action-buttons" style="margin-top: 0">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="toggleAllTiles(true)"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="toggleAllTiles(false)"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+          <div id="tiles-pool" class="tiles-grid"></div>
         </div>
 
         <!-- Hand State -->
@@ -190,7 +214,7 @@
         </div>
       </div>
     </div>
-    <script src="api.js"></script>
-    <script src="app.js"></script>
+    <script src="api.js?v=3"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>

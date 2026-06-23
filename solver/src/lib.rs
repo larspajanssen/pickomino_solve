@@ -48,14 +48,18 @@ impl PyAction {
 /// Returns a list of `(action, expected_score)` tuples for the current state.
 pub fn compute_state_scores(
     hand: [u8; game::N_FACES as usize],
-    throw: Option<[u8; game::N_FACES as usize]>
+    throw: Option<[u8; game::N_FACES as usize]>,
+    tiles: Vec<u8>,
 ) -> PyResult<Vec<(PyAction, f64)>> {
     let state = GameState::new(hand, throw).map_err(|err| {
-        PyValueError::new_err(format!("Problem initializing state {err}"))
+        PyValueError::new_err(format!("Problem initializing state: {err}"))
+    })?;
+    let valid_tiles = game::create_valid_tiles(tiles).map_err(|err| {
+        PyValueError::new_err(format!("Problem initializing tiles: {err}"))
     })?;
     let mut cache = HashMap::new();
     let result = state.available_actions().map(|action| {
-        let score = game::max_expected_score(&state, action, &mut cache);
+        let score = game::max_expected_score(&state, action, &valid_tiles, &mut cache);
         (PyAction{ inner: action }, score)
     }).collect();
 
