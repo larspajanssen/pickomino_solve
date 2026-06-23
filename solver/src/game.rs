@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, sync::Arc};
 use itertools::Itertools;
 
 /// All possible decision types in a Pickomino turn.
@@ -14,7 +14,9 @@ pub enum Action {
     Bust,
 }
 
-type Cache = HashMap<(GameState, Action), f64>;
+type Tiles = Arc<[u8]>;
+
+type Cache = HashMap<(GameState, Action, Tiles), f64>;
 
 pub struct ActionIter {
     actions: [Action; N_FACES as usize + 2],
@@ -45,10 +47,34 @@ const TILES_MAX_NUMBER: u8 = 36;
 const TILE_WORMS: [u8; N_TILES as usize] = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4];
 
 #[derive(Debug)]
+pub struct TilesError;
+impl fmt::Display for TilesError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tiles in game must be between {TILES_MIN_NUMBER} and {TILES_MAX_NUMBER}")
+    }
+}
+
+/// Return a tiles object as used in downstream Game functions,
+/// while also checking for valid tile values.
+/// Returns error when tiles are not valid for game, otherwise returns Tiles object.
+pub fn create_valid_tiles(
+    tiles: Vec<u8>
+) -> Result<Tiles, TilesError> {
+    let valid_tiles: bool = (tiles.iter().min().unwrap() >= &TILES_MIN_NUMBER ) & (tiles.iter().max().unwrap() <= &TILES_MAX_NUMBER );
+    match valid_tiles {
+        true => {
+            Ok(Arc::from(tiles.into_boxed_slice()))
+        }
+        false => Err(TilesError),
+    }
+}
+
+
+#[derive(Debug)]
 pub struct GameStateCreationError;
 impl fmt::Display for GameStateCreationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Number of dice in game must me smaller than {N_DICE} and tiles in game must be between {TILES_MIN_NUMBER} and {TILES_MAX_NUMBER}")
+        write!(f, "Number of dice in game must me smaller than {N_DICE}")
     }
 }
 
@@ -62,7 +88,6 @@ struct ProbGameState {
 pub struct GameState {
     hand: [u8; N_FACES as usize],
     dice_throw: Option<[u8; N_FACES as usize]>,
-    tiles: [u8; N_TILES as usize],
 }
 impl GameState {
     /// Construct a state from a hand and optional current throw.
@@ -71,13 +96,11 @@ impl GameState {
     pub fn new(
         hand: [u8; N_FACES as usize],
         dice_throw: Option<[u8; N_FACES as usize]>,
-        tiles: [u8; N_TILES as usize]
     ) -> Result<GameState, GameStateCreationError> {
         let valid_size = hand.iter().sum::<u8>() + dice_throw.unwrap_or([0; N_FACES as usize]).iter().sum::<u8>() <= N_DICE;
-        let valid_tiles: bool = (tiles.iter().min().unwrap() >= &TILES_MIN_NUMBER ) & (tiles.iter().max().unwrap() <= &TILES_MAX_NUMBER );
-        match valid_size & valid_tiles {
+        match valid_size {
             true => {
-                Ok(GameState { hand, dice_throw, tiles })
+                Ok(GameState { hand, dice_throw })
             }
             false => Err(GameStateCreationError),
         }
@@ -121,7 +144,7 @@ impl GameState {
     ///
     /// A hand without a worm scores `0`.
     /// And only if the score is equal to an available tile will the score be larger than 1
-    pub fn compute_score(&self) -> u8 {
+    pub fn compute_score(&self, tiles: &[u8]) -> u8 {
         if self.hand[WORM_INDEX as usize] == 0 {
             return 0;
         }
@@ -136,7 +159,7 @@ impl GameState {
 
         if (TILES_MIN_NUMBER..=TILES_MAX_NUMBER).contains(&score) {
             // Retrieve number of worms from TILE_WORMS array
-            return if self.tiles.contains(&score) {TILE_WORMS[(score - TILES_MIN_NUMBER) as usize]} else {0}
+            return if tiles.contains(&score) {TILE_WORMS[(score - TILES_MIN_NUMBER) as usize]} else {0}
         }
         0
     }
@@ -148,15 +171,16 @@ impl GameState {
 pub fn max_expected_score(
     state: &GameState,
     action: Action,
+    tiles: &Tiles,
     cache: &mut Cache,
 ) -> f64 {
-    if let Some(&score) = cache.get(&(*state, action)) {
+    if let Some(&score) = cache.get(&(*state, action, tiles.clone())) {
         return score;
     }
     let result = match action {
         Action::Bust => 0.0,
         Action::Stop => {
-            state.compute_score() as f64
+            state.compute_score(tiles) as f64
         },
         Action::SaveDice(select_die) => {
             match &state.dice_throw {
@@ -167,7 +191,7 @@ pub fn max_expected_score(
                     new_state.hand[select_die_idx as usize] += count_selected_dice;
                     new_state.dice_throw = None;
                     new_state.available_actions().map(
-                        |a| max_expected_score(&new_state, a, cache)
+                        |a| max_expected_score(&new_state, a, tiles, cache)
                     ).reduce(f64::max).unwrap()
                 },
                 _ => panic!("No dice thrown, while selecting die is not allowed"),
@@ -182,15 +206,16 @@ pub fn max_expected_score(
                 // with the max_expected_score of that probabilistic state
                 |prob_state| {
                 // Compute over all actions of a next state the max expected score
-                let max_exp_next_score = prob_state.state.available_actions().map(|a| max_expected_score(&prob_state.state, a, cache)).reduce(f64::max).unwrap();
+                let max_exp_next_score = prob_state.state.available_actions().map(|a| max_expected_score(&prob_state.state, a, tiles, cache)).reduce(f64::max).unwrap();
                 prob_state.prob * max_exp_next_score
             }).sum() // sum all prob * max_exp_value_prob_state to arrive at max_exp_value
         }
     };
-    cache.insert((*state, action), result);
+    cache.insert((*state, action, tiles.clone()), result);
 
     result
 }
+
 
 fn create_distinct_roll_outcomes_iter(state: &GameState) -> impl Iterator<Item = ProbGameState> {
     let throw_count: usize = (N_DICE - state.hand.iter().sum::<u8>()) as usize;
@@ -244,14 +269,14 @@ mod tests {
 
         #[test]
         fn returns_zero_without_worm() {
-            let state = GameState::new([0, 0, 0, 0, 2, 0], None, ALL_SCORE_TILES).unwrap();
-            assert_eq!(state.compute_score(), 0);
+            let state = GameState::new([0, 0, 0, 0, 2, 0], None, ).unwrap();
+            assert_eq!(state.compute_score(&ALL_SCORE_TILES), 0);
         }
 
         #[test]
         fn counts_worm_as_five_points() {
-            let state = GameState::new([0, 0, 0, 0, 4, 1], None, ALL_SCORE_TILES).unwrap();
-            assert_eq!(state.compute_score(), 2);
+            let state = GameState::new([0, 0, 0, 0, 4, 1], None).unwrap();
+            assert_eq!(state.compute_score(&ALL_SCORE_TILES), 2);
         }
     }
 
@@ -260,25 +285,25 @@ mod tests {
 
         #[test]
         fn only_stop_when_hand_is_full() {
-            let state = GameState::new([0, 0, 0, 0, 8, 0], None, ALL_SCORE_TILES).unwrap();
+            let state = GameState::new([0, 0, 0, 0, 8, 0], None).unwrap();
             itertools::assert_equal(state.available_actions(), [Action::Stop]);
         }
 
         #[test]
         fn bust_when_no_selectable_face_exists() {
-            let state = GameState::new([0, 0, 0, 0, 6, 0], Some([0, 0, 0, 0, 2, 0]), ALL_SCORE_TILES).unwrap();
+            let state = GameState::new([0, 0, 0, 0, 6, 0], Some([0, 0, 0, 0, 2, 0])).unwrap();
             itertools::assert_equal(state.available_actions(), [Action::Bust]);
         }
 
         #[test]
         fn save_dice_options_only_for_new_faces_present_in_throw() {
-            let state = GameState::new([0, 0, 0, 0, 6, 0], Some([0, 0, 0, 0, 1, 1]), ALL_SCORE_TILES).unwrap();
+            let state = GameState::new([0, 0, 0, 0, 6, 0], Some([0, 0, 0, 0, 1, 1])).unwrap();
             itertools::assert_equal(state.available_actions(), [Action::SaveDice(6)]);
         }
 
         #[test]
         fn roll_or_stop_when_no_throw_and_hand_not_full() {
-            let state = GameState::new([0, 0, 0, 0, 6, 0], None, ALL_SCORE_TILES).unwrap();
+            let state = GameState::new([0, 0, 0, 0, 6, 0], None).unwrap();
             let state_actions: Vec<Action> = state.available_actions().collect();
             assert!(state_actions.contains(&Action::Roll) && state_actions.contains(&Action::Stop));
         }
@@ -290,46 +315,57 @@ mod tests {
         #[test]
         fn stop_expected_score_matches_current_hand_score() {
             let mut cache = HashMap::new();
-            let state = GameState::new([0, 1, 1, 1, 1, 3], None, ALL_SCORE_TILES).unwrap();
-            let exp_score = max_expected_score(&state, Action::Stop, &mut cache);
+            let state = GameState::new([0, 1, 1, 1, 1, 3], None).unwrap();
+            let exp_score = max_expected_score(&state, Action::Stop, &Arc::from(ALL_SCORE_TILES), &mut cache);
             assert_eq!(exp_score, 3.);
         }
 
         #[test]
         fn roll_expected_score_matches_reference_case() {
             let mut cache = HashMap::new();
-            let state = GameState::new([0, 1, 1, 1, 1, 3], None, ALL_SCORE_TILES).unwrap();
-            let exp_score = max_expected_score(&state, Action::Roll, &mut cache);
+            let state = GameState::new([0, 1, 1, 1, 1, 3], None).unwrap();
+            let exp_score = max_expected_score(&state, Action::Roll, &Arc::from(ALL_SCORE_TILES), &mut cache);
             assert_eq!(exp_score, 0.5);
         }
 
         #[test]
         fn bust_expected_score_is_zero() {
             let mut cache = HashMap::new();
-            let state = GameState::new([0, 1, 1, 1, 1, 3], Some([0, 1, 0, 0, 0, 0]), ALL_SCORE_TILES).unwrap();
-            let exp_score = max_expected_score(&state, Action::Bust, &mut cache);
+            let state = GameState::new([0, 1, 1, 1, 1, 3], Some([0, 1, 0, 0, 0, 0])).unwrap();
+            let exp_score = max_expected_score(&state, Action::Bust, &Arc::from(ALL_SCORE_TILES), &mut cache);
             assert_eq!(exp_score, 0.);
         }
 
         #[test]
         fn save_dice_expected_score_matches_reference_case() {
             let mut cache = HashMap::new();
-            let state = GameState::new([0, 0, 1, 1, 1, 3], Some([0, 1, 0, 0, 0, 0]), ALL_SCORE_TILES).unwrap();
-            let exp_score = max_expected_score(&state, Action::SaveDice(2), &mut cache);
+            let state = GameState::new([0, 0, 1, 1, 1, 3], Some([0, 1, 0, 0, 0, 0])).unwrap();
+            let exp_score = max_expected_score(&state, Action::SaveDice(2), &Arc::from(ALL_SCORE_TILES), &mut cache);
             assert_eq!(exp_score, 3.);
         }
 
         #[test]
         fn rolling_stronger_hand_outperforms_weaker_hand() {
             let mut cache = HashMap::new();
-            let state1 = GameState::new([0, 0, 0, 0, 0, 3], None, ALL_SCORE_TILES).unwrap();
-            let state2 = GameState::new([0, 3, 0, 0, 0, 0], None, ALL_SCORE_TILES).unwrap();
+            let state1 = GameState::new([0, 0, 0, 0, 0, 3], None).unwrap();
+            let state2 = GameState::new([0, 3, 0, 0, 0, 0], None).unwrap();
 
-            let exp_score1 = max_expected_score(&state1, Action::Roll, &mut cache);
-            let exp_score2 = max_expected_score(&state2, Action::Roll, &mut cache);
+            let exp_score1 = max_expected_score(&state1, Action::Roll, &Arc::from(ALL_SCORE_TILES), &mut cache);
+            let exp_score2 = max_expected_score(&state2, Action::Roll, &Arc::from(ALL_SCORE_TILES), &mut cache);
             assert!(exp_score1 > exp_score2);
             assert!(exp_score1 > 0.);
             assert!(exp_score2 > 0.);
+        }
+
+        #[test]
+        fn handle_available_tiles_set_score() {
+            let mut cache = HashMap::new();
+            let state = GameState::new([0, 1, 1, 1, 1, 3], None).unwrap();
+            let exp_score = max_expected_score(&state, Action::Stop, &Arc::from(ALL_SCORE_TILES), &mut cache);
+            assert_eq!(exp_score, 3.);
+
+            let exp_score_no_tile = max_expected_score(&state, Action::Stop, &Arc::from([22, 23, 24, 33]), &mut cache);
+            assert_eq!(exp_score_no_tile, 0.)
         }
     }
 }
