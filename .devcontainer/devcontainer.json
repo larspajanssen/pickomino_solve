@@ -1,8 +1,10 @@
 {
   "name": "pickonmino_solve",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "image": "mcr.microsoft.com/devcontainers/base:noble",
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": false
+    },
     "ghcr.io/devcontainers-extra/features/starship:1": {},
     "ghcr.io/va-h/devcontainers-features/uv:1": {
       "shellautocompletion": true
@@ -38,7 +40,8 @@
   },
   "postCreateCommand": {
     "setup user workspace": "bash .devcontainer/config-files.sh",
-    "clean up tox": "rm -rf ${containerWorkspaceFolder}/.tox"
+    "clean up tox": "rm -rf ${containerWorkspaceFolder}/.tox",
+    "link codex": "mkdir -p ~/.local/bin && ln -sf ~/.codex/packages/standalone/current/bin/codex ~/.local/bin/codex"
   },
   "containerEnv": {
     // UV
@@ -49,11 +52,17 @@
     "UV_VENV_CLEAR": "true",
     "UV_PROJECT": "${containerWorkspaceFolder}/api",
     "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/api/.venv",
-    "PATH": "${containerWorkspaceFolder}/api/.venv/bin:${localEnv:PATH}",
+    "PATH": "/home/vscode/.local/bin:${containerWorkspaceFolder}/api/.venv/bin:${localEnv:PATH}",
+    "CODEX_HOME": "/home/vscode/.codex",
     // Docker
     "DOCKER_CONFIG": "/home/vscode/.docker-container"
   },
   "mounts": [
+    {
+      "source": "${localEnv:HOME}/.codex",
+      "target": "/home/vscode/.codex",
+      "type": "bind"
+    },
     {
       "source": "${localEnv:HOME}/.cache/uv",
       "target": "/home/vscode/.uv_cache",
