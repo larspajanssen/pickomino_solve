@@ -1,6 +1,5 @@
-from fastapi.testclient import TestClient
-
-from pickomino_solver.main import Action, app, serialize_results
+from pickomino_solver import main
+from pickomino_solver.main import Action, Request, run, serialize_results
 
 
 def test_run_returns_serialized_actions_with_expected_value(monkeypatch):
@@ -13,17 +12,10 @@ def test_run_returns_serialized_actions_with_expected_value(monkeypatch):
             ({"type": "SaveDice", "value": 6}, 11.0),
         ]
 
-    monkeypatch.setattr(
-        "pickomino_solver.main.compute_state_scores",
-        fake_compute_state_scores,
-    )
-    client = TestClient(app)
+    monkeypatch.setattr(main, "compute_state_scores", fake_compute_state_scores)
 
-    response = client.post(
-        "/api/run", json={"hand": [1, 2, 6], "dice_throw": [3, 3, 4], "tiles": [22, 23]}
-    )
-    assert response.status_code == 200
-    assert response.json() == {
+    response = run(Request(hand=[1, 2, 6], dice_throw=[3, 3, 4], tiles=[22, 23]))
+    assert response == {
         "actions": [
             {"action": "Roll", "expected_value": 12.5},
             {"action": "SaveDice 6", "expected_value": 11.0},
@@ -38,21 +30,14 @@ def test_run_accepts_null_or_omitted_dice_throw(monkeypatch):
         calls.append((hand, dice_throw, tiles))
         return []
 
-    monkeypatch.setattr(
-        "pickomino_solver.main.compute_state_scores",
-        fake_compute_state_scores,
-    )
-    client = TestClient(app)
+    monkeypatch.setattr(main, "compute_state_scores", fake_compute_state_scores)
 
-    null_response = client.post(
-        "/api/run", json={"hand": [6], "dice_throw": None, "tiles": [22, 23]}
-    )
-    assert null_response.status_code == 200
-
-    omitted_response = client.post("/api/run", json={"hand": [6], "tiles": [22, 23]})
-    assert omitted_response.status_code == 200
+    null_response = run(Request(hand=[6], dice_throw=None, tiles=[22, 23]))
+    omitted_response = run(Request(hand=[6], tiles=[22, 23]))
 
     assert calls == [([6], None, [22, 23]), ([6], None, [22, 23])]
+    assert null_response == {"actions": []}
+    assert omitted_response == {"actions": []}
 
 
 def test_run_uses_request_defaults_when_body_empty(monkeypatch):
@@ -62,15 +47,10 @@ def test_run_uses_request_defaults_when_body_empty(monkeypatch):
         assert tiles == [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
         return []
 
-    monkeypatch.setattr(
-        "pickomino_solver.main.compute_state_scores",
-        fake_compute_state_scores,
-    )
-    client = TestClient(app)
+    monkeypatch.setattr(main, "compute_state_scores", fake_compute_state_scores)
 
-    response = client.post("/api/run", json={})
-    assert response.status_code == 200
-    assert response.json() == {"actions": []}
+    response = run(Request())
+    assert response == {"actions": []}
 
 
 def test_serialize_results_handles_none_and_numeric_values():
