@@ -46,6 +46,6 @@ repos:
       - id: python-compile-and-test
         name: python-compile-and-test
         entry: uv
-        args: ["--project", "api", "run", "--no-cache", "pytest"]
+        args: ["--project", "api", "run", "pytest"]
         language: system
         pass_filenames: false

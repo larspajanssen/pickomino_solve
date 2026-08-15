@@ -1,5 +1,7 @@
 # Regenwormen solver
 
+[![prek](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/pre-commit.yml/badge.svg?branch=main)](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/pre-commit.yml)
+
 A web-based implementation of the Regenwormen / Pickomino dice game with an AI solver. The browser UI is served by the frontend container, the API is exposed through FastAPI, and the solver lives in a Rust extension compiled via PyO3.
 
 ![Regenwormen UI](assets/ui.png)
@@ -25,9 +27,11 @@ Start the full application with Docker Compose:
 docker-compose up -d --build
 ```
 
-Open the app in your browser at:
+The compose file is wired for an external reverse proxy on `proxy_net`, so the frontend is not published on `localhost` by default.
 
-- Frontend: `http://localhost`
+If you want to reach it directly from your machine, uncomment the `80:80` port mapping in [`docker-compose.yml`](docker-compose.yml) and open:
+
+- Frontend: `http://127.0.0.1`
 
 The frontend proxies API requests to the API container automatically, so you do not need to expose the API port publicly for normal use.
 
