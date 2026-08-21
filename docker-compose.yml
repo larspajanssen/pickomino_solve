@@ -40,4 +40,4 @@ services:
 networks:
   default:
     external:
-      name: proxy_net
+      name: ${DOCKER_NETWORK:-proxy_net}
