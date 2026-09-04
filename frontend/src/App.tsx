@@ -91,15 +91,11 @@ export default function App() {
   return (
     <main className="container">
       <header>
-        <p className="eyebrow">Rust / WebAssembly</p>
         <h1>
           Pickomino
           <br />
           <em>Solver</em>
         </h1>
-        <p className="lede">
-          Find the highest-value move without leaving your browser.
-        </p>
       </header>
       <form onSubmit={submit}>
         <section className="section dice-section">
@@ -200,7 +196,7 @@ export default function App() {
         <section className="section results">
           <div className="section-heading">
             <h2>Recommended actions</h2>
-            <span className="badge">{results.length} options</span>
+            <span className="badge">Expected scores</span>
           </div>
           {results.map((result) => (
             <div className="result" key={result.action}>
