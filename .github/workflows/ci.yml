@@ -1,0 +1,47 @@
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install wasm-bindgen
+        run: cargo install wasm-bindgen-cli --version 0.2.105
+
+      - name: Test Rust workspace
+        run: cargo test --locked
+
+      - name: Build WASM bindings
+        run: |
+          cargo build --locked --release --target wasm32-unknown-unknown -p pickomino-wasm
+          wasm-bindgen target/wasm32-unknown-unknown/release/pickomino_wasm.wasm --target web --out-dir wasm/pkg
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Build production image
+        run: docker build -t pickomino:ci .
