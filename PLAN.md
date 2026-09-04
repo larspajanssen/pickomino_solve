@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-The core migration described below is implemented in this checkout. The remaining unchecked items are deliberate follow-up work: browser end-to-end coverage, release versioning, and optional Web Worker support.
+The core migration described below is implemented in this checkout. Browser end-to-end coverage is intentionally omitted; the remaining unchecked item is optional Web Worker support.
 
 ## 1. Goal
 
@@ -1008,6 +1008,11 @@ The refactor is complete when all of the following are true:
 - [ ] No development toolchain is required in the production image.
 - [x] CI runs Rust, WASM, frontend, and production-container builds.
 - [x] A repeatable native solver benchmark is available.
+- [x] Conventional commits and GitHub release automation are configured.
+
+Intentionally omitted:
+
+- Browser end-to-end tests. The requested scope excludes them; Rust, WASM/build, TypeScript, and frontend test-command checks remain automated.
 - [ ] README documents the new architecture and development workflow.
 
 Completed in this implementation:
