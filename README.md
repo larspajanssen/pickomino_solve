@@ -10,22 +10,23 @@ A web-based implementation of the Regenwormen / Pickomino dice game with an AI s
 
 - Interactive browser UI with dice editing and live solver results.
 - Rust-backed solver logic for faster action evaluation and search.
-- Docker Compose setup for running the static app locally or on a server.
+- Docker setup for running the static app locally or on a server.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker
 - Rust and `wasm-bindgen-cli` for local WASM builds
 - Node.js 20+ and npm
 
 ### Quick Start
 
-Start the full application with Docker Compose:
+Build and run the static application:
 
 ```bash
-docker compose up -d --build
+docker build -t pickomino .
+docker run --rm -p 8080:80 pickomino
 ```
 
 Open `http://127.0.0.1:8080` after the build completes.

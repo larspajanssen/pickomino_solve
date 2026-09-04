@@ -794,23 +794,14 @@ Only the generated static assets and the static web server should remain.
 
 # 19. Docker deployment target
 
-The desired Compose configuration should eventually be no more complicated than:
-
-```yaml
-services:
-  pickomino:
-    build: .
-    ports:
-      - "8080:8080"
-```
-
-Potentially this can later be replaced by:
+The desired Docker invocation should eventually be no more complicated than:
 
 ```bash
-docker run -p 8080:8080 pickomino
+docker build -t pickomino .
+docker run -p 8080:80 pickomino
 ```
 
-No separate backend/frontend services should be required.
+No separate Compose, backend, or frontend services are required.
 
 ---
 
