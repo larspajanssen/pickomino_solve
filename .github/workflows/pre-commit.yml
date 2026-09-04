@@ -27,26 +27,14 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Python tooling
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pre-commit
-            ~/.cache/uv
-            ~/.local/bin
-            ~/.local/share/uv
-          key: prek-python-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml', 'api/pyproject.toml', 'api/uv.lock') }}
-          restore-keys: |
-            prek-python-${{ runner.os }}-
-
       - name: Cache Rust tooling
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/git
             ~/.cargo/registry
-            solver/target
-          key: prek-rust-${{ runner.os }}-${{ hashFiles('solver/Cargo.toml', 'solver/Cargo.lock') }}
+            target
+          key: prek-rust-${{ runner.os }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
           restore-keys: |
             prek-rust-${{ runner.os }}-
 

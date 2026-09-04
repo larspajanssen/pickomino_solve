@@ -34,18 +34,12 @@ repos:
       - id: rust-check
         name: rust-check
         entry: cargo
-        args: ["check", "--manifest-path", "solver/Cargo.toml"]
+        args: ["check"]
         language: system
         pass_filenames: false
       - id: rust-test
         name: rust-test
         entry: cargo
-        args: ["test", "--manifest-path", "solver/Cargo.toml"]
-        language: system
-        pass_filenames: false
-      - id: python-compile-and-test
-        name: python-compile-and-test
-        entry: uv
-        args: ["--project", "api", "run", "pytest"]
+        args: ["test"]
         language: system
         pass_filenames: false

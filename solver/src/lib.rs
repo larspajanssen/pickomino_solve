@@ -1,68 +1,92 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use pyo3::{exceptions::PyValueError, prelude::*};
 
-use crate::game::GameState;
 pub mod game;
 
-#[pymodule]
-fn pickomino_solver(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(compute_state_scores, m)?)?;
-    Ok(())
+pub type DiceCounts = [u8; game::N_FACES as usize];
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SolveRequest {
+    pub hand: DiceCounts,
+    pub dice_throw: Option<DiceCounts>,
+    pub tiles: Vec<u8>,
 }
 
-/// Python-facing wrapper around a solver action.
-///
-/// Exposes action fields as properties to simplify serialization in FastAPI.
-#[pyclass]
-pub struct PyAction {
-    /// Internal Rust action.
-    pub inner: game::Action,
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct ActionResult {
+    pub action: String,
+    pub expected_value: f64,
 }
 
-#[pymethods]
-impl PyAction {
-    // Expose a way for Python to check what kind of action it is
-    #[getter]
-    fn action_type(&self) -> String {
-        match self.inner {
-            game::Action::Roll => "Roll".to_string(),
-            game::Action::Stop => "Stop".to_string(),
-            game::Action::SaveDice(_) => "SaveDice".to_string(),
-            game::Action::Bust => "Bust".to_string(),
-        }
-    }
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SolveResult {
+    pub actions: Vec<ActionResult>,
+}
 
-    // Expose the value if it's a SaveDice action, otherwise return None
-    #[getter]
-    fn dice_value(&self) -> Option<u8> {
-        match self.inner {
-            game::Action::SaveDice(val) => Some(val),
-            _ => None,
-        }
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolveError(pub String);
+
+impl std::fmt::Display for SolveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
-#[pyfunction]
-/// Compute expected scores for all available actions in a given game state.
-///
-/// Returns a list of `(action, expected_score)` tuples for the current state.
-pub fn compute_state_scores(
-    hand: [u8; game::N_FACES as usize],
-    throw: Option<[u8; game::N_FACES as usize]>,
-    tiles: Vec<u8>,
-) -> PyResult<Vec<(PyAction, f64)>> {
-    let state = GameState::new(hand, throw).map_err(|err| {
-        PyValueError::new_err(format!("Problem initializing state: {err}"))
-    })?;
-    let valid_tiles = game::create_valid_tiles(tiles).map_err(|err| {
-        PyValueError::new_err(format!("Problem initializing tiles: {err}"))
-    })?;
+/// Solve a validated game state using the platform-independent Rust core.
+pub fn solve(request: SolveRequest) -> Result<SolveResult, SolveError> {
+    let state = game::GameState::new(request.hand, request.dice_throw)
+        .map_err(|err| SolveError(err.to_string()))?;
+    let valid_tiles =
+        game::create_valid_tiles(request.tiles).map_err(|err| SolveError(err.to_string()))?;
     let mut cache = HashMap::new();
-    let result = state.available_actions().map(|action| {
-        let score = game::max_expected_score(&state, action, &valid_tiles, &mut cache);
-        (PyAction{ inner: action }, score)
-    }).collect();
+    let actions = state
+        .available_actions()
+        .map(|action| ActionResult {
+            action: action.to_string(),
+            expected_value: game::max_expected_score(&state, action, &valid_tiles, &mut cache),
+        })
+        .collect();
 
-    Ok(result)
+    Ok(SolveResult { actions })
+}
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn solve_serializes_action_names_and_values() {
+        let result = solve(SolveRequest {
+            hand: [0, 1, 1, 1, 1, 3],
+            dice_throw: None,
+            tiles: (21..=36).collect(),
+        })
+        .unwrap();
+
+        assert_eq!(result.actions[0].action, "Roll");
+        assert_eq!(result.actions[1].action, "Stop");
+        assert_eq!(result.actions[1].expected_value, 3.0);
+    }
+
+    #[test]
+    fn solve_rejects_empty_tiles() {
+        let error = solve(SolveRequest {
+            hand: [0; 6],
+            dice_throw: None,
+            tiles: vec![],
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("between 21 and 36"));
+    }
+
+    #[test]
+    fn solve_rejects_more_than_eight_dice() {
+        let error = solve(SolveRequest {
+            hand: [255; 6],
+            dice_throw: None,
+            tiles: vec![21],
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("smaller than 8"));
+    }
 }

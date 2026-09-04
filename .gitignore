@@ -8,6 +8,8 @@ wheels/
 
 # Node
 node_modules/
+frontend/dist/
+wasm/pkg/
 
 # Virtual environments
 .venv
