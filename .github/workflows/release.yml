@@ -1,5 +1,7 @@
-name: release
+name: release-please
 
+# A merge, squash merge, or rebase merge into main creates this push event.
+# Release Please prepares the version bump; merging its release PR publishes it.
 on:
   push:
     branches: [main]
@@ -15,5 +17,6 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
+          target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

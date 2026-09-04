@@ -1008,7 +1008,7 @@ The refactor is complete when all of the following are true:
 - [ ] No development toolchain is required in the production image.
 - [x] CI runs Rust, WASM, frontend, and production-container builds.
 - [x] A repeatable native solver benchmark is available.
-- [x] Conventional commits and GitHub release automation are configured.
+- [x] Conventional commits and GitHub release automation are configured for changes merged into `main`.
 
 Intentionally omitted:
 
