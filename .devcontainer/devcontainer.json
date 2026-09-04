@@ -23,36 +23,22 @@
   },
   "initializeCommand": {
     "ensure ssh exists": "mkdir -p ~/.ssh",
-    "create host uv cache dir": "mkdir -p ~/.cache/uv",
     "create permanent fish history": "mkdir -p ~/.devcontainer/${devcontainerId} && touch ~/.devcontainer/${devcontainerId}/fish_history"
   },
   "onCreateCommand": {
-    "prepare config dirs": "mkdir -p ~/.config/fish ~/.config/uv",
-    "create venv": "uv venv --clear",
-    "uv tox": "uv tool install tox --with tox-uv",
-    "uv prek": "uv tool install prek",
-    "uv just": "uv tool install rust-just"
+    "prepare config dirs": "mkdir -p ~/.config/fish",
+    "install prek": "uv tool install prek"
   },
   "updateContentCommand": {
-    "sync dependencies": "uv sync --all-groups",
     "prek install": "prek install",
     "prek install-hooks": "prek install-hooks"
   },
   "postCreateCommand": {
     "setup user workspace": "bash .devcontainer/config-files.sh",
-    "clean up tox": "rm -rf ${containerWorkspaceFolder}/.tox",
     "link codex": "mkdir -p ~/.local/bin && ln -sf ~/.codex/packages/standalone/current/bin/codex ~/.local/bin/codex"
   },
   "containerEnv": {
-    // UV
-    "UV_INDEX": "${localEnv:UV_INDEX}",
-    "UV_CACHE_DIR": "/home/vscode/.uv_cache",
-    "UV_LINK_MODE": "symlink",
-    "UV_PYTHON": "3.13",
-    "UV_VENV_CLEAR": "true",
-    "UV_PROJECT": "${containerWorkspaceFolder}/api",
-    "UV_PROJECT_ENVIRONMENT": "${containerWorkspaceFolder}/api/.venv",
-    "PATH": "/home/vscode/.local/bin:${containerWorkspaceFolder}/api/.venv/bin:${localEnv:PATH}",
+    "PATH": "/home/vscode/.local/bin:${localEnv:PATH}",
     "CODEX_HOME": "/home/vscode/.codex",
     // Docker
     "DOCKER_CONFIG": "/home/vscode/.docker-container"
@@ -61,11 +47,6 @@
     {
       "source": "${localEnv:HOME}/.codex",
       "target": "/home/vscode/.codex",
-      "type": "bind"
-    },
-    {
-      "source": "${localEnv:HOME}/.cache/uv",
-      "target": "/home/vscode/.uv_cache",
       "type": "bind"
     },
     {
@@ -84,20 +65,6 @@
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "fish",
-        "python.analysis.typeCheckingMode": "basic",
-        "python.defaultInterpreterPath": "${workspaceFolder}/api/.venv/bin/python",
-        "python.linting.enabled": true,
-        "python.testing.pytestEnabled": true,
-        "python.testing.unittestEnabled": false,
-        "python.testing.pytestPath": "${workspaceFolder}/api/.venv/bin/pytest",
-        "[python]": {
-          "editor.defaultFormatter": "charliermarsh.ruff",
-          "editor.formatOnSave": true,
-          "editor.codeActionsOnSave": {
-            "source.fixAll": "explicit",
-            "source.organizeImports": "explicit"
-          }
-        },
         "editor.semanticHighlighting.enabled": true,
         "editor.inlayHints.enabled": "on",
         "rust-analyzer.check.command": "clippy", // Use clippy instead of 'cargo check' for better lints
@@ -116,15 +83,10 @@
         }
       },
       "extensions": [
-        "ms-python.python",
-        "ms-python.debugpy",
-        "njpwerner.autodocstring",
-        "charliermarsh.ruff",
         "tamasfe.even-better-toml",
         "yzhang.markdown-all-in-one",
         "streetsidesoftware.code-spell-checker",
         "rust-lang.rust-analyzer",
-        "tamasfe.even-better-toml",
         "vadimcn.vscode-lldb"
       ]
     }
