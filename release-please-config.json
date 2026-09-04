@@ -1,0 +1,11 @@
+{
+  "release-type": "node",
+  "package-name": "pickomino-frontend",
+  "include-component-in-tag": false,
+  "packages": {
+    "frontend": {
+      "release-type": "node",
+      "package-name": "pickomino-frontend"
+    }
+  }
+}

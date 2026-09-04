@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "commit": "cz",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
@@ -14,9 +15,16 @@
     "react": "latest",
     "react-dom": "latest"
   },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "commitizen": "^4.3.2",
+    "cz-conventional-changelog": "^3.3.0",
     "typescript": "latest",
     "vite": "latest",
     "vitest": "latest"
