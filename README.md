@@ -56,6 +56,10 @@ npm run build
 
 The solver accepts a request with `hand`, nullable `dice_throw`, and `tiles`, and returns ranked `actions`. The request is passed from TypeScript to WASM without an HTTP hop.
 
+### Releases
+
+Commits merged into `main` trigger Release Please. It opens or updates a release pull request with the frontend version and changelog. Merging that release pull request creates the `v*` tag and GitHub Release. Use `npm run commit` from `frontend/` to create conventional commits that can be classified automatically.
+
 ## License
 
 [MIT](LICENSE)
