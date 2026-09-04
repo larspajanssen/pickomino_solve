@@ -5,8 +5,8 @@ edition = "2024"
 
 [lib]
 name = "pickomino_solver"
-crate-type = ["cdylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 itertools = "0.14.0"
-pyo3 = { version = "0.29.0", features = ["extension-module"] }
+serde = { version = "1.0.228", features = ["derive"] }
