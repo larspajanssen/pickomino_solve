@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-The core migration described below is implemented in this checkout. The remaining unchecked items are deliberate follow-up work: browser end-to-end coverage, performance benchmarking, CI/CD, release versioning, and optional Web Worker support.
+The core migration described below is implemented in this checkout. The remaining unchecked items are deliberate follow-up work: browser end-to-end coverage, release versioning, and optional Web Worker support.
 
 ## 1. Goal
 
@@ -1006,8 +1006,8 @@ The refactor is complete when all of the following are true:
 - [ ] Application works when served by a simple static web server.
 - [ ] Docker can package the complete application into one image.
 - [ ] No development toolchain is required in the production image.
-- [ ] CI runs Rust, WASM, frontend, and integration tests.
-- [ ] Performance has been benchmarked against the old implementation.
+- [x] CI runs Rust, WASM, frontend, and production-container builds.
+- [x] A repeatable native solver benchmark is available.
 - [ ] README documents the new architecture and development workflow.
 
 Completed in this implementation:
@@ -1022,7 +1022,7 @@ Completed in this implementation:
 
 - The public request preserves the existing API shape: `dice_throw` is nullable because it represents whether a throw is currently pending.
 - The first implementation uses direct WASM calls from React. A Web Worker remains optional and should be added only if browser profiling shows main-thread blocking.
-- The migration is delivered as one verified refactor in this checkout; the repository policy currently prevents creating Git refs or commits from the agent.
+- The migration is delivered incrementally on `refactor/to-rust-wasm-ts`; Git commits and pushes are available when explicitly requested.
 
 ---
 

@@ -46,6 +46,7 @@ The performance-critical game logic is implemented in `solver/src/`.
 
 ```bash
 cargo test
+cargo bench --bench solver
 rustup target add wasm32-unknown-unknown
 wasm-bindgen target/wasm32-unknown-unknown/release/pickomino_wasm.wasm --target web --out-dir wasm/pkg
 cd frontend

@@ -10,3 +10,7 @@ crate-type = ["rlib"]
 [dependencies]
 itertools = "0.14.0"
 serde = { version = "1.0.228", features = ["derive"] }
+
+[[bench]]
+name = "solver"
+harness = false
