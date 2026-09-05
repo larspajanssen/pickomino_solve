@@ -1,4 +1,4 @@
-name: release-please
+name: release
 
 # A merge, squash merge, or rebase merge into main creates this push event.
 # Release Please prepares the version bump; merging its release PR publishes it.
