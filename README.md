@@ -2,6 +2,7 @@
 
 [![build](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/ci.yml)
 [![release](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/LarsPAJanssen/pickomino_solve/actions/workflows/release.yml)
+[![Docker image](https://img.shields.io/docker/v/larspajanssen/pickomino?sort=semver)](https://hub.docker.com/r/larspajanssen/pickomino)
 
 A web-based implementation of the Regenwormen / Pickomino dice game with an AI solver. The React frontend calls a Rust solver compiled to WebAssembly directly in the browser.
 

@@ -1,0 +1,51 @@
+name: Docker
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: Tag to build (for example, v1.1.1)
+        required: true
+        type: string
+      publish_latest:
+        description: Also update the latest tag
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.docker_tag }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: larspajanssen/pickomino
+          tags: |
+            type=raw,value=${{ github.event.release.tag_name || inputs.docker_tag }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' || inputs.publish_latest }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
