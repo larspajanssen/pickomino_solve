@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/larspajanssen/pickomino_solve/compare/v1.1.0...v1.1.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* release to Docker Hub ([8d968a7](https://github.com/larspajanssen/pickomino_solve/commit/8d968a746895a0ef23152c011008c59e3b6cc3f5))
+
 ## [1.1.0](https://github.com/larspajanssen/pickomino_solve/compare/v1.0.0...v1.1.0) (2026-09-04)
 
 ### Features
