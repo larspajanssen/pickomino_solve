@@ -2,9 +2,18 @@ name: CI
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "solver/**"
+      - "wasm/**"
+      - "frontend/**"
+      - "assets/**"
+      - "Dockerfile"
+      - ".pre-commit-config.yaml"
+      - ".github/workflows/ci.yml"
+      - "README.md"
 
 jobs:
   build:
@@ -30,7 +39,21 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Cache Rust build and tooling
+        id: rust-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/wasm-bindgen
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: ci-rust-${{ runner.os }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            ci-rust-${{ runner.os }}-
+
       - name: Install wasm-bindgen
+        if: steps.rust-cache.outputs.cache-hit != 'true'
         run: cargo install wasm-bindgen-cli --version 0.2.105
 
       - name: Test Rust workspace
@@ -46,7 +69,12 @@ jobs:
         run: npm ci && npm run typecheck && npm test && npm run build
 
       - name: Build production image
-        run: docker build -t pickomino:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: pickomino:ci
+          cache-from: type=gha,scope=ci
+          cache-to: type=gha,mode=max,scope=ci
 
   pre-commit:
     if: github.event_name != 'pull_request' || github.base_ref == 'main'
