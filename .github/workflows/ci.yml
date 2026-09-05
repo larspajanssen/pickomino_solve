@@ -1,4 +1,4 @@
-name: build
+name: CI
 
 on:
   workflow_dispatch:
@@ -6,13 +6,15 @@ on:
     branches: [main]
   pull_request:
 
-concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
+    concurrency:
+      group: build-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -45,3 +47,47 @@ jobs:
 
       - name: Build production image
         run: docker build -t pickomino:ci .
+
+  pre-commit:
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    concurrency:
+      group: prek-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust tooling
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: prek-rust-${{ runner.os }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            prek-rust-${{ runner.os }}-
+
+      - name: Install prek
+        run: uv tool install prek
+
+      - name: Run prek
+        run: prek run --all-files --color=always
+        continue-on-error: true
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-fix formatting with prek"
